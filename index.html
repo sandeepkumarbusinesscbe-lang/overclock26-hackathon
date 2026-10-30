@@ -93,9 +93,12 @@ ul.hist li:last-child{border-bottom:0}
 #cleanBanner[hidden]{display:none}
 #rbt{position:fixed;right:10px;bottom:10px;width:48px;height:48px;min-height:0;padding:0;border:0;border-radius:50%;
   background:transparent;z-index:9999;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  -webkit-tap-highlight-color:transparent;outline:none;box-shadow:none;opacity:1}
-#rbt i{display:block;width:14px;height:14px;border-radius:50%;background:transparent;opacity:0;box-shadow:none}
-#rbt:focus,#rbt:focus-visible,#rbt:active{outline:none;background:transparent;box-shadow:none}
+  -webkit-tap-highlight-color:transparent}
+#rbt i{display:block;width:14px;height:14px;border-radius:50%;background:var(--muted);opacity:.7;
+  box-shadow:0 0 0 2px var(--card);transition:background .2s}
+#rbt.s1 i{background:#1778f2;opacity:1}
+#rbt.s2 i{background:#ea7a0c;opacity:1}
+#rbt.s0 i{background:var(--acc);opacity:1}
 </style>
 </head>
 <body>
@@ -163,14 +166,14 @@ ul.hist li:last-child{border-bottom:0}
 
   <section class="card">
     <h2>AI model</h2>
-    <div id="modelMsg" class="msg">Loading model from /tfjs_model/model.json …</div>
+    <div id="modelMsg" class="msg">Loading model from best.onnx …</div>
     <div class="grid2" style="margin-top:10px">
       <button id="retryBtn" class="full" type="button">Retry automatic load</button>
     </div>
     <details id="manual">
-      <summary>Load model files manually</summary>
-      <p class="hint">Select <b>model.json</b> and all <b>.bin</b> files from the tfjs_model folder together.</p>
-      <input id="modelFiles" type="file" multiple accept=".json,.bin,application/json,application/octet-stream">
+      <summary>Load model file manually</summary>
+      <p class="hint">Select the <b>best.onnx</b> file.</p>
+      <input id="modelFiles" type="file" accept=".onnx,application/octet-stream">
     </details>
   </section>
 
@@ -202,13 +205,13 @@ ul.hist li:last-child{border-bottom:0}
 
 <button id="rbt" type="button" aria-label="Cleaning control"><i></i></button>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 <script>
 (() => {
 'use strict';
 const $ = id => document.getElementById(id);
 const SIZE = 640;
-const MODEL_URL = './tfjs_model/model.json';
+const MODEL_URL = './best.onnx';
 const CLS = [
   { key: 'solid',  tag: 'S', color: '#ea7a0c' },
   { key: 'liquid', tag: 'L', color: '#1778f2' }
@@ -291,29 +294,26 @@ function layoutOf(shape){
     if (a === 6) return { cf: true, n: b };
     if (b === 6) return { cf: false, n: a };
   }
-  const e = new Error('Wrong model output: expected 6 channels (4 box values + 2 class scores) but the model returned shape [' + shape.join(', ') + ']. Use a YOLOv8 model with exactly 2 classes (solid, liquid) exported to TensorFlow.js.');
+  const e = new Error('Wrong model output: expected 6 channels (4 box values + 2 class scores) but the model returned shape [' + shape.join(', ') + ']. Use a YOLOv8 model with exactly 2 classes (solid, liquid) exported to ONNX (best.onnx).');
   e.known = true; throw e;
 }
-function firstTensor(out){
-  if (Array.isArray(out)) return out;
-  if (out && out.shape) return [out];
-  return Object.values(out);
+async function validateModel(m){
+  const z = new ort.Tensor('float32', new Float32Array(3 * SIZE * SIZE), [1, 3, SIZE, SIZE]);
+  let out;
+  try { out = await m.session.run({ [m.inName]: z }); }
+  catch(e){ throw new Error('The model could not run on a 640×640 RGB image: ' + e.message); }
+  layoutOf(out[m.outName].dims.map(Number));
 }
 
-async function validateModel(model){
-  const z = tf.zeros([1, SIZE, SIZE, 3]);
-  let outs;
-  try { outs = firstTensor(model.predict(z)); }
-  catch(e){ z.dispose(); throw new Error('The model could not run on a 640×640 RGB image: ' + e.message); }
-  z.dispose();
-  try { layoutOf(outs[0].shape); }
-  finally { outs.forEach(t => t.dispose()); }
+async function makeModel(source){
+  const session = await ort.InferenceSession.create(source, { executionProviders: ['wasm'], graphOptimizationLevel: 'all' });
+  return { session, inName: session.inputNames[0], outName: session.outputNames[0] };
 }
 
 async function installModel(model){
   try { await validateModel(model); }
-  catch(e){ try { model.dispose(); } catch(_){} throw e; }
-  if (S.model){ try { S.model.dispose(); } catch(_){} }
+  catch(e){ try { await model.session.release(); } catch(_){} throw e; }
+  if (S.model){ try { await S.model.session.release(); } catch(_){} }
   S.model = model;
   setBadge('loaded');
   setModelMsg('Model loaded. Detections come only from what the model outputs.', 'ok');
@@ -321,30 +321,29 @@ async function installModel(model){
 }
 
 async function loadAuto(){
-  setBadge('loading'); setModelMsg('Loading model from /tfjs_model/model.json …');
+  setBadge('loading'); setModelMsg('Loading model from best.onnx …');
   const fail = (msg) => { setBadge('none'); setModelMsg(msg, 'err'); $('manual').open = true; };
-  if (!window.tf){
-    return fail('TensorFlow.js could not be downloaded. Check your internet connection and reload the page.');
+  if (!window.ort){
+    return fail('ONNX Runtime Web could not be downloaded. Check your internet connection and reload the page.');
   }
   try {
-    await tf.ready();
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
     let res;
     try { res = await fetch(MODEL_URL, { cache: 'no-cache' }); }
     catch(e){
-      return fail('Could not reach /tfjs_model/model.json. If you opened index.html directly from your device (file://), automatic loading cannot work. Use the website address, or choose the model files below.');
+      return fail('Could not reach best.onnx. If you opened index.html directly from your device (file://), automatic loading cannot work. Use the website address, or choose the model file below.');
     }
     if (!res.ok){
-      return fail('Model not found: /tfjs_model/model.json returned HTTP ' + res.status + '. Upload the tfjs_model folder (model.json plus its .bin files) next to index.html, or choose the files below.');
+      return fail('Model not found: best.onnx returned HTTP ' + res.status + '. Upload best.onnx next to index.html, or choose the file below.');
     }
-    let j;
-    try { j = await res.json(); }
-    catch(e){ return fail('/tfjs_model/model.json is not valid JSON. The file may be missing and replaced by a web page. Check the tfjs_model folder, or choose the files below.'); }
-    if (!j || !j.modelTopology || !j.weightsManifest){
-      return fail('/tfjs_model/model.json is not a TensorFlow.js graph model (modelTopology or weightsManifest is missing). Re-export the model to TensorFlow.js format.');
+    const buf = new Uint8Array(await res.arrayBuffer());
+    if (buf.length < 100000){
+      return fail('best.onnx looks too small (' + buf.length + ' bytes). It may be a web page instead of the model. Check the file.');
     }
     let model;
-    try { model = await tf.loadGraphModel(MODEL_URL); }
-    catch(e){ return fail('Model files could not be loaded: ' + e.message + '. Check that every .bin file listed in model.json is inside the tfjs_model folder.'); }
+    try { model = await makeModel(buf); }
+    catch(e){ return fail('Model file could not be loaded: ' + e.message); }
     await installModel(model);
   } catch(e){
     fail(e.message);
@@ -352,18 +351,17 @@ async function loadAuto(){
 }
 
 async function loadManual(files){
-  const list = [...files];
-  const json = list.find(f => /\.json$/i.test(f.name));
-  const bins = list.filter(f => /\.bin$/i.test(f.name));
-  if (!json){ setBadge(S.model ? 'loaded' : 'none'); return setModelMsg('No model.json selected. Select model.json and all .bin files together.', 'err'); }
-  if (!bins.length){ setBadge(S.model ? 'loaded' : 'none'); return setModelMsg('No .bin files selected. Select model.json and all its .bin files together.', 'err'); }
-  setBadge('loading'); setModelMsg('Loading selected model files …');
+  const f = [...files].find(x => /\.onnx$/i.test(x.name));
+  if (!f){ setBadge(S.model ? 'loaded' : 'none'); return setModelMsg('No .onnx file selected. Select best.onnx.', 'err'); }
+  setBadge('loading'); setModelMsg('Loading selected model file …');
   try {
-    const model = await tf.loadGraphModel(tf.io.browserFiles([json, ...bins]));
+    ort.env.wasm.numThreads = 1;
+    ort.env.wasm.wasmPaths = 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/';
+    const model = await makeModel(new Uint8Array(await f.arrayBuffer()));
     await installModel(model);
   } catch(e){
     setBadge(S.model ? 'loaded' : 'none');
-    setModelMsg('Could not load the selected files: ' + e.message + '. Make sure you picked model.json and every .bin file from the same export.', 'err');
+    setModelMsg('Could not load the selected file: ' + e.message + '. Make sure you picked best.onnx from the same export.', 'err');
   }
 }
 $('retryBtn').addEventListener('click', loadAuto);
@@ -396,15 +394,14 @@ function nms(c, thr){
 
 async function infer(src, fw, fh, confThr){
   const { r, dx, dy } = letterbox(src, fw, fh);
-  const input = tf.tidy(() => tf.browser.fromPixels(lb).toFloat().div(255).expandDims(0));
-  let outs;
-  try { outs = firstTensor(S.model.predict(input)); }
-  finally { input.dispose(); }
-  let data, lay;
-  try {
-    lay = layoutOf(outs[0].shape);
-    data = await outs[0].data();
-  } finally { outs.forEach(t => t.dispose()); }
+  const px = lctx.getImageData(0, 0, SIZE, SIZE).data, plane = SIZE * SIZE, arr = new Float32Array(3 * plane);
+  for (let i = 0, p = 0; i < plane; i++, p += 4){
+    arr[i] = px[p] / 255; arr[plane + i] = px[p + 1] / 255; arr[2 * plane + i] = px[p + 2] / 255;
+  }
+  const out = await S.model.session.run({ [S.model.inName]: new ort.Tensor('float32', arr, [1, 3, SIZE, SIZE]) });
+  const o0 = out[S.model.outName];
+  const lay = layoutOf(o0.dims.map(Number));
+  const data = o0.data;
   const n = lay.n, cf = lay.cf;
   const g = (i,k) => cf ? data[k*n + i] : data[i*6 + k];
   let mx = 0;
