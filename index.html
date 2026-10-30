@@ -93,12 +93,9 @@ ul.hist li:last-child{border-bottom:0}
 #cleanBanner[hidden]{display:none}
 #rbt{position:fixed;right:10px;bottom:10px;width:48px;height:48px;min-height:0;padding:0;border:0;border-radius:50%;
   background:transparent;z-index:9999;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  -webkit-tap-highlight-color:transparent}
-#rbt i{display:block;width:14px;height:14px;border-radius:50%;background:var(--muted);opacity:.7;
-  box-shadow:0 0 0 2px var(--card);transition:background .2s}
-#rbt.s1 i{background:#1778f2;opacity:1}
-#rbt.s2 i{background:#ea7a0c;opacity:1}
-#rbt.s0 i{background:var(--acc);opacity:1}
+  -webkit-tap-highlight-color:transparent;outline:none;box-shadow:none;opacity:1}
+#rbt i{display:block;width:14px;height:14px;border-radius:50%;background:transparent;opacity:0;box-shadow:none}
+#rbt:focus,#rbt:focus-visible,#rbt:active{outline:none;background:transparent;box-shadow:none}
 </style>
 </head>
 <body>
