@@ -1,753 +1,216 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#0b8f6b">
-<title>Cleansers AI</title>
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="light dark"><title>Cleansers AI</title>
 <style>
-:root{
-  --bg:#f3f6f4;--card:#ffffff;--text:#14201b;--acc:#0b8f6b;--onacc:#ffffff;
-  --bd:#d9e2dd;--red:#d92d20;--muted:#5b6b64;--soft:#e8f3ee;
-}
-:root[data-theme="dark"]{
-  --bg:#0d1411;--card:#17211c;--text:#e8f0ec;--acc:#2fd19f;--onacc:#06251b;
-  --bd:#273530;--red:#f04438;--muted:#93a69d;--soft:#1d2b25;
-}
-@media (prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#0d1411;--card:#17211c;--text:#e8f0ec;--acc:#2fd19f;--onacc:#06251b;
-    --bd:#273530;--red:#f04438;--muted:#93a69d;--soft:#1d2b25;
-  }
-}
-*{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--text);
-  font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
-  padding:max(12px,env(safe-area-inset-top)) 12px max(24px,env(safe-area-inset-bottom))}
-.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
-.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px}
-h1{font-size:1.35rem;margin:0}
-h2{font-size:1rem;margin:0 0 10px}
-.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-.badges{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
-.badge{display:inline-block;font-size:.8rem;font-weight:600;padding:4px 10px;border-radius:999px;
-  border:1px solid var(--bd);background:var(--soft);color:var(--muted)}
-.badge.ok{background:var(--acc);border-color:var(--acc);color:var(--onacc)}
-.badge.bad{border-color:var(--red);color:var(--red)}
-button,.btn{font:inherit;font-weight:600;min-height:52px;padding:10px 14px;border-radius:12px;
-  border:1px solid var(--bd);background:var(--card);color:var(--text);cursor:pointer;
-  touch-action:manipulation;width:100%}
-button.primary{background:var(--acc);border-color:var(--acc);color:var(--onacc)}
-button.danger{border-color:var(--red);color:var(--red)}
-button:disabled{opacity:.45;cursor:not-allowed}
-button:focus-visible,input:focus-visible,summary:focus-visible{outline:3px solid var(--acc);outline-offset:2px}
-#themeBtn{width:52px;min-height:46px;padding:0;font-size:1.3rem;flex:none}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.full{grid-column:1/-1}
-#alert{display:none;background:var(--red);color:#fff;font-weight:800;text-align:center;
-  letter-spacing:.04em;font-size:1.15rem;padding:16px;border-radius:12px;animation:pulse 1s infinite}
-#alert.on{display:block}
-#alert small{display:block;font-weight:600;letter-spacing:0;font-size:.85rem;margin-top:2px}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.78;transform:scale(1.015)}}
-@media (prefers-reduced-motion:reduce){#alert{animation:none}}
-#camBox{position:relative;width:min(100%,calc(70vh * .75));aspect-ratio:3/4;margin:0 auto;
-  background:#000;border-radius:12px;overflow:hidden}
-#camBox video,#camBox img,#overlay{position:absolute;inset:0;width:100%;height:100%}
-#camBox video,#camBox img{object-fit:contain;display:none}
-#overlay{pointer-events:none}
-#camMsg{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
-  text-align:center;color:#c9d6d0;padding:24px;font-size:.95rem}
-.status{margin-top:10px;padding:10px 12px;border-radius:10px;background:var(--soft);
-  border:1px solid var(--bd);font-size:.95rem;word-break:break-word}
-.status.ok{border-color:var(--acc)}
-.status.warn{border-color:#d9a400}
-.status.err{border-color:var(--red);color:var(--red);font-weight:600}
-#countdown{text-align:center;color:var(--muted);font-size:.9rem}
-.counters{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-.counter{text-align:center;border:1px solid var(--bd);border-radius:12px;padding:10px 4px;background:var(--soft)}
-.counter b{display:block;font-size:1.6rem;line-height:1.1}
-.counter span{font-size:.78rem;color:var(--muted)}
-.counter.s b{color:#ea7a0c}.counter.l b{color:#1778f2}
-label.f{display:block;font-size:.88rem;color:var(--muted);margin-bottom:10px}
-label.f input{display:block;width:100%;margin-top:4px;min-height:46px;font:inherit;font-size:16px;
-  color:var(--text);background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:8px 10px}
-.hint{font-size:.82rem;color:var(--muted);margin:6px 0 0}
-details{margin-top:10px}
-summary{min-height:46px;display:flex;align-items:center;cursor:pointer;font-weight:600}
-input[type=file]{width:100%;min-height:46px;font-size:16px;margin-top:6px}
-.msg{margin-top:10px;padding:10px 12px;border-radius:10px;font-size:.92rem;background:var(--soft);
-  border:1px solid var(--bd);word-break:break-word}
-.msg.err{border-color:var(--red);color:var(--red);font-weight:600}
-.msg.ok{border-color:var(--acc)}
-.item{border:1px solid var(--bd);border-left-width:6px;border-radius:10px;padding:10px 12px;margin-bottom:8px}
-.item b{font-size:1rem}
-.item dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:6px 0 0;font-size:.9rem}
-.item dt{color:var(--muted)}.item dd{margin:0}
-ul.hist{list-style:none;padding:0;margin:0}
-ul.hist li{padding:8px 0;border-bottom:1px solid var(--bd);font-size:.9rem}
-ul.hist li:last-child{border-bottom:0}
-.empty{color:var(--muted);font-size:.92rem}
-</style>
-</head>
-<body>
-<div class="wrap">
-
-  <header class="card">
-    <div class="top">
-      <div>
-        <h1>Cleansers AI</h1>
-        <div class="badges">
-          <span id="modelBadge" class="badge">Model: not loaded</span>
-        </div>
-      </div>
-      <button id="themeBtn" type="button" aria-label="Switch theme">🌙</button>
-    </div>
-  </header>
-
-  <div id="alert" role="alert">CLEANING NEEDED<small id="alertSub"></small></div>
-
-  <section class="card">
-    <div id="camBox">
-      <video id="video" playsinline muted autoplay></video>
-      <img id="photoImg" alt="Captured photo">
-      <canvas id="overlay"></canvas>
-      <div id="camMsg">Camera is off.<br>Tap “Start monitoring” or “Take photo”.</div>
-    </div>
-    <div id="status" class="status" role="status" aria-live="polite">Ready.</div>
-  </section>
-
-  <section class="card">
-    <div class="grid2">
-      <button id="startBtn" class="primary full" type="button">Start monitoring</button>
-      <button id="stopBtn" type="button" disabled>Stop</button>
-      <button id="scanBtn" type="button">Scan now</button>
-      <button id="photoBtn" class="full" type="button">Take photo</button>
-    </div>
-    <input id="photoInput" type="file" accept="image/*" capture="environment" hidden>
-    <p id="countdown" style="margin:10px 0 0">Monitoring is off</p>
-  </section>
-
-  <section class="card">
-    <h2>Results</h2>
-    <div class="counters">
-      <div class="counter s"><b id="cSolid">0</b><span>Solid</span></div>
-      <div class="counter l"><b id="cLiquid">0</b><span>Liquid</span></div>
-      <div class="counter"><b id="cArea">0</b><span>Total cm²</span></div>
-    </div>
-  </section>
-
-  <section class="card">
-    <h2>Settings</h2>
-    <label class="f">Scan every (seconds, minimum 5)
-      <input id="setInterval" type="number" inputmode="numeric" min="5" step="1" value="60"></label>
-    <label class="f">Confidence threshold (0.05 – 0.95)
-      <input id="setConf" type="number" inputmode="decimal" min="0.05" max="0.95" step="0.05" value="0.25"></label>
-    <label class="f">Phone height above the surface (cm)
-      <input id="setHeight" type="number" inputmode="decimal" min="10" step="1" value="100"></label>
-    <label class="f" style="margin-bottom:0">Camera field of view across the long side (degrees)
-      <input id="setFov" type="number" inputmode="decimal" min="20" max="140" step="1" value="66"></label>
-  </section>
-
-  <section class="card">
-    <h2>AI model</h2>
-    <div id="modelMsg" class="msg">Loading model from /tfjs_model/model.json …</div>
-    <div class="grid2" style="margin-top:10px">
-      <button id="retryBtn" class="full" type="button">Retry automatic load</button>
-    </div>
-    <details id="manual">
-      <summary>Load model files manually</summary>
-      <p class="hint">Select <b>model.json</b> and all <b>.bin</b> files from the tfjs_model folder together.</p>
-      <input id="modelFiles" type="file" multiple accept=".json,.bin,application/json,application/octet-stream">
-    </details>
-  </section>
-
-  <section class="card">
-    <h2>No-model fallback</h2>
-    <p class="hint" style="margin-top:0">Used only when no model is loaded. Save a picture of the empty kitchen, and later scans flag areas that changed. Changed areas are not classified.</p>
-    <div class="grid2" style="margin-top:10px">
-      <button id="cleanBtn" type="button">Save current view as CLEAN</button>
-      <button id="cleanDelBtn" type="button" class="danger">Delete clean view</button>
-    </div>
-    <div id="cleanInfo" class="msg">No clean view saved.</div>
-  </section>
-
-  <section class="card">
-    <h2>Detected items</h2>
-    <div id="items"><p class="empty">Nothing scanned yet.</p></div>
-    <p class="hint">Area is the size of the detection box, not the exact outline of the mess. Position is measured from the top-left corner of the frame.</p>
-  </section>
-
-  <section class="card">
-    <h2>Scan history</h2>
-    <ul id="hist" class="hist"><li class="empty">No scans yet.</li></ul>
-  </section>
-
-  <button id="copyBtn" class="primary" type="button">Copy report</button>
-  <div id="copyMsg" class="msg" style="display:none" role="status"></div>
-
-</div>
-
+:root{--bg:#f3f6f4;--card:#fff;--tx:#14201b;--mut:#5b6a63;--ac:#0b8f6b;--on:#fff;--bd:#d9e2dd;--red:#d92d20}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#0d1411;--card:#17211c;--tx:#e8f0ec;--mut:#9aaca4;--ac:#2fd19f;--on:#06241a;--bd:#273530}}
+:root[data-theme=dark]{--bg:#0d1411;--card:#17211c;--tx:#e8f0ec;--mut:#9aaca4;--ac:#2fd19f;--on:#06241a;--bd:#273530}
+*{box-sizing:border-box}html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,sans-serif;padding:max(12px,env(safe-area-inset-top)) max(12px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+main{max-width:560px;margin:auto;display:grid;gap:10px}
+header{display:flex;align-items:center;gap:8px}h1{font-size:20px;margin:0;flex:1}h2{font-size:15px;margin:6px 0 0}
+.pill{font-size:12px;padding:3px 9px;border-radius:99px;background:var(--card);border:1px solid var(--bd);color:var(--mut)}
+button,.btn{font:inherit;font-weight:600;border:1px solid var(--bd);background:var(--card);color:var(--tx);padding:12px;border-radius:12px;text-align:center;cursor:pointer;min-height:46px}
+button.pri{background:var(--ac);color:var(--on);border-color:var(--ac)}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#stage{position:relative;background:#000;border-radius:14px;overflow:hidden;aspect-ratio:3/4;display:grid;place-items:center}
+#stage video,#stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
+#ph{color:#9ab;font-size:14px;padding:16px;text-align:center}
+#alert{background:var(--red);color:#fff;font-weight:800;text-align:center;padding:14px;border-radius:12px;letter-spacing:.5px}
+#alert:not([hidden]){animation:pulse 1s infinite}@keyframes pulse{50%{opacity:.6}}
+#msg{font-size:14px;color:var(--mut);min-height:20px}#msg.err{color:var(--red);font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}
+.stat{text-align:center}.stat b{display:block;font-size:22px}.stat span{font-size:12px;color:var(--mut)}
+details{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:10px}summary{font-weight:700;cursor:pointer}
+label{display:grid;gap:3px;font-size:13px;color:var(--mut)}input[type=number]{font:inherit;padding:9px;border-radius:9px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);width:100%}
+.set{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px}
+.it{border-left:6px solid;font-size:13.5px}.it b{font-size:15px}.mut{color:var(--mut);font-size:13px}
+small{color:var(--mut)}
+</style></head><body><main>
+<header><h1>Cleansers AI</h1><span id="mode" class="pill">No model</span><button id="theme" style="min-height:36px;padding:4px 10px" aria-label="Theme">◐</button></header>
+<div id="alert" hidden>⚠ CLEANING NEEDED</div>
+<div id="stage"><video id="vid" playsinline muted autoplay hidden></video><canvas id="ov"></canvas><div id="ph">Camera is off.<br>Tap “Start monitoring” and allow the camera, or use “Take photo”.</div></div>
+<div id="msg" role="status">Ready.</div>
+<div class="row"><button id="start" class="pri">Start monitoring</button><button id="stop">Stop</button></div>
+<div class="row"><button id="scan">Scan now</button><label class="btn">Take photo<input id="photo" type="file" accept="image/*" capture="environment" hidden></label></div>
+<div class="mut" id="cd"></div>
+<div class="grid"><div class="card stat"><b id="nS">0</b><span>solid</span></div><div class="card stat"><b id="nL">0</b><span>liquid</span></div><div class="card stat"><b id="nA">0</b><span>total cm²</span></div></div>
+<details open><summary>Settings</summary><div class="set">
+<label>Scan every (seconds)<input id="iv" type="number" value="60" min="5"></label>
+<label>Phone height above surface (cm)<input id="hgt" type="number" value="100" min="10"></label>
+<label>Camera FOV across long side (°)<input id="fov" type="number" value="66" min="30" max="120"></label>
+<label>Min confidence (0–1)<input id="thr" type="number" value="0.25" min="0.05" max="0.95" step="0.05"></label>
+</div><small id="scl">Scale: hold the phone level, pointing straight down. cm/px = 2 × height × tan(FOV/2) ÷ frame width (the long side is used when the frame is portrait). Set FOV to your phone’s main-camera field of view.</small></details>
+<details open><summary>1 · AI model (TensorFlow.js)</summary><div class="set" style="grid-template-columns:1fr">
+<label>Select model.json and ALL .bin files together<input id="mfiles" type="file" multiple></label><button id="load">Load model</button></div></details>
+<details><summary>2 · Fallback: compare with clean view</summary><div class="set" style="grid-template-columns:1fr">
+<small>No model? Point at the clean, empty kitchen and save it. Later scans flag anything that changed (type is not classified).</small>
+<button id="clean">Save current view as CLEAN</button><small id="cstat">No clean view saved.</small></div></details>
+<h2>Detected items</h2><div id="items" class="mut">Nothing scanned yet.</div>
+<h2>Scan history</h2><div id="hist" class="mut">Empty.</div>
+<button id="copy">Copy report</button>
+</main>
 <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js"></script>
 <script>
-(() => {
-'use strict';
-const $ = id => document.getElementById(id);
-const SIZE = 640;
-const MODEL_URL = './tfjs_model/model.json';
-const CLS = [
-  { key: 'solid',  tag: 'S', color: '#ea7a0c' },
-  { key: 'liquid', tag: 'L', color: '#1778f2' }
-];
-const UNK = { key: 'changed', tag: 'U', color: '#8b5cf6' };
-
-const S = {
-  model: null, stream: null, running: false, photo: null, busy: false,
-  nextAt: 0, dets: [], dims: null, last: null, history: [],
-  wake: null, wakeWarned: false, clean: null, cleanTime: null
-};
-
-const store = {
-  get(k){ try { return localStorage.getItem(k); } catch(e){ return null; } },
-  set(k,v){ try { localStorage.setItem(k,v); return true; } catch(e){ return false; } },
-  del(k){ try { localStorage.removeItem(k); } catch(e){} }
-};
-
-/* ---------- messages ---------- */
-function setStatus(msg, kind){ const el = $('status'); el.textContent = msg; el.className = 'status ' + (kind || ''); }
-function setModelMsg(msg, kind){ const el = $('modelMsg'); el.textContent = msg; el.className = 'msg ' + (kind || ''); }
-const MSG_NO_HTTPS = 'The camera needs a secure (https://) page. This page is not secure, so the browser blocks the camera. Open the https:// address of your site, or use “Take photo”.';
-
-/* ---------- theme ---------- */
-function sysTheme(){ return matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
-function curTheme(){ return document.documentElement.getAttribute('data-theme') || sysTheme(); }
-function applyTheme(t, explicit){
-  if (explicit) document.documentElement.setAttribute('data-theme', t);
-  $('themeBtn').textContent = t === 'dark' ? '☀️' : '🌙';
-  $('themeBtn').setAttribute('aria-label', t === 'dark' ? 'Switch to light theme' : 'Switch to dark theme');
-}
-const savedTheme = store.get('cl_theme');
-if (savedTheme === 'light' || savedTheme === 'dark') applyTheme(savedTheme, true); else applyTheme(sysTheme(), false);
-$('themeBtn').addEventListener('click', () => {
-  const n = curTheme() === 'dark' ? 'light' : 'dark';
-  applyTheme(n, true); store.set('cl_theme', n);
-});
-
-/* ---------- settings ---------- */
-const FIELDS = [
-  ['setInterval','interval',60,5,3600],
-  ['setConf','conf',0.25,0.05,0.95],
-  ['setHeight','height',100,10,1000],
-  ['setFov','fov',66,20,140]
-];
-function getSettings(){
-  const out = {}; const fixed = [];
-  for (const [id,key,def,min,max] of FIELDS){
-    const raw = parseFloat(String($(id).value).replace(',','.'));
-    let v = isFinite(raw) ? raw : def;
-    const c = Math.min(max, Math.max(min, v));
-    if (c !== raw){ fixed.push(key); $(id).value = c; }
-    out[key] = c;
-  }
-  if (fixed.length) setStatus('A setting was empty or out of range and was reset to a valid value (' + fixed.join(', ') + ').', 'warn');
-  return out;
-}
-(function loadSettings(){
-  const raw = store.get('cl_settings'); if (!raw) return;
-  try { const o = JSON.parse(raw); for (const [id,key] of FIELDS) if (o[key] != null) $(id).value = o[key]; } catch(e){}
-})();
-FIELDS.forEach(([id]) => $(id).addEventListener('change', () => {
-  const s = getSettings(); store.set('cl_settings', JSON.stringify(s));
-  if (S.running) S.nextAt = Date.now() + s.interval * 1000;
-}));
-
-/* ---------- model ---------- */
-function setBadge(state){
-  const b = $('modelBadge');
-  if (state === 'loaded'){ b.textContent = 'Model: loaded'; b.className = 'badge ok'; }
-  else if (state === 'loading'){ b.textContent = 'Model: loading…'; b.className = 'badge'; }
-  else { b.textContent = 'Model: not loaded'; b.className = 'badge bad'; }
-}
-
-function layoutOf(shape){
-  const s = shape.slice();
-  while (s.length > 2 && s[0] === 1) s.shift();
-  if (s.length === 2){
-    const [a,b] = s;
-    if (a === 6) return { cf: true, n: b };
-    if (b === 6) return { cf: false, n: a };
-  }
-  const e = new Error('Wrong model output: expected 6 channels (4 box values + 2 class scores) but the model returned shape [' + shape.join(', ') + ']. Use a YOLOv8 model with exactly 2 classes (solid, liquid) exported to TensorFlow.js.');
-  e.known = true; throw e;
-}
-function firstTensor(out){
-  if (Array.isArray(out)) return out;
-  if (out && out.shape) return [out];
-  return Object.values(out);
-}
-
-async function validateModel(model){
-  const z = tf.zeros([1, SIZE, SIZE, 3]);
-  let outs;
-  try { outs = firstTensor(model.predict(z)); }
-  catch(e){ z.dispose(); throw new Error('The model could not run on a 640×640 RGB image: ' + e.message); }
-  z.dispose();
-  try { layoutOf(outs[0].shape); }
-  finally { outs.forEach(t => t.dispose()); }
-}
-
-async function installModel(model){
-  try { await validateModel(model); }
-  catch(e){ try { model.dispose(); } catch(_){} throw e; }
-  if (S.model){ try { S.model.dispose(); } catch(_){} }
-  S.model = model;
-  setBadge('loaded');
-  setModelMsg('Model loaded. Detections come only from what the model outputs.', 'ok');
-  $('manual').open = false;
-}
-
-async function loadAuto(){
-  setBadge('loading'); setModelMsg('Loading model from /tfjs_model/model.json …');
-  const fail = (msg) => { setBadge('none'); setModelMsg(msg, 'err'); $('manual').open = true; };
-  if (!window.tf){
-    return fail('TensorFlow.js could not be downloaded. Check your internet connection and reload the page.');
-  }
-  try {
-    await tf.ready();
-    let res;
-    try { res = await fetch(MODEL_URL, { cache: 'no-cache' }); }
-    catch(e){
-      return fail('Could not reach /tfjs_model/model.json. If you opened index.html directly from your device (file://), automatic loading cannot work. Use the website address, or choose the model files below.');
-    }
-    if (!res.ok){
-      return fail('Model not found: /tfjs_model/model.json returned HTTP ' + res.status + '. Upload the tfjs_model folder (model.json plus its .bin files) next to index.html, or choose the files below.');
-    }
-    let j;
-    try { j = await res.json(); }
-    catch(e){ return fail('/tfjs_model/model.json is not valid JSON. The file may be missing and replaced by a web page. Check the tfjs_model folder, or choose the files below.'); }
-    if (!j || !j.modelTopology || !j.weightsManifest){
-      return fail('/tfjs_model/model.json is not a TensorFlow.js graph model (modelTopology or weightsManifest is missing). Re-export the model to TensorFlow.js format.');
-    }
-    let model;
-    try { model = await tf.loadGraphModel(MODEL_URL); }
-    catch(e){ return fail('Model files could not be loaded: ' + e.message + '. Check that every .bin file listed in model.json is inside the tfjs_model folder.'); }
-    await installModel(model);
-  } catch(e){
-    fail(e.message);
-  }
-}
-
-async function loadManual(files){
-  const list = [...files];
-  const json = list.find(f => /\.json$/i.test(f.name));
-  const bins = list.filter(f => /\.bin$/i.test(f.name));
-  if (!json){ setBadge(S.model ? 'loaded' : 'none'); return setModelMsg('No model.json selected. Select model.json and all .bin files together.', 'err'); }
-  if (!bins.length){ setBadge(S.model ? 'loaded' : 'none'); return setModelMsg('No .bin files selected. Select model.json and all its .bin files together.', 'err'); }
-  setBadge('loading'); setModelMsg('Loading selected model files …');
-  try {
-    const model = await tf.loadGraphModel(tf.io.browserFiles([json, ...bins]));
-    await installModel(model);
-  } catch(e){
-    setBadge(S.model ? 'loaded' : 'none');
-    setModelMsg('Could not load the selected files: ' + e.message + '. Make sure you picked model.json and every .bin file from the same export.', 'err');
-  }
-}
-$('retryBtn').addEventListener('click', loadAuto);
-$('modelFiles').addEventListener('change', e => { if (e.target.files.length) loadManual(e.target.files); });
-
-/* ---------- inference ---------- */
-const lb = document.createElement('canvas'); lb.width = lb.height = SIZE;
-const lctx = lb.getContext('2d', { willReadFrequently: true });
-
-function letterbox(src, fw, fh){
-  const r = Math.min(SIZE / fw, SIZE / fh);
-  const nw = Math.round(fw * r), nh = Math.round(fh * r);
-  const dx = Math.floor((SIZE - nw) / 2), dy = Math.floor((SIZE - nh) / 2);
-  lctx.fillStyle = '#727272'; lctx.fillRect(0, 0, SIZE, SIZE);
-  lctx.drawImage(src, 0, 0, fw, fh, dx, dy, nw, nh);
-  return { r, dx, dy };
-}
-function iou(a, b){
-  const x1 = Math.max(a.x1,b.x1), y1 = Math.max(a.y1,b.y1), x2 = Math.min(a.x2,b.x2), y2 = Math.min(a.y2,b.y2);
-  const w = Math.max(0, x2-x1), h = Math.max(0, y2-y1), i = w*h;
-  const u = (a.x2-a.x1)*(a.y2-a.y1) + (b.x2-b.x1)*(b.y2-b.y1) - i;
-  return u > 0 ? i / u : 0;
-}
-function nms(c, thr){
-  c.sort((a,b) => b.conf - a.conf);
-  const keep = [];
-  for (const a of c) if (keep.every(k => k.cls !== a.cls || iou(a,k) <= thr)) keep.push(a);
-  return keep;
-}
-
-async function infer(src, fw, fh, confThr){
-  const { r, dx, dy } = letterbox(src, fw, fh);
-  const input = tf.tidy(() => tf.browser.fromPixels(lb).toFloat().div(255).expandDims(0));
-  let outs;
-  try { outs = firstTensor(S.model.predict(input)); }
-  finally { input.dispose(); }
-  let data, lay;
-  try {
-    lay = layoutOf(outs[0].shape);
-    data = await outs[0].data();
-  } finally { outs.forEach(t => t.dispose()); }
-  const n = lay.n, cf = lay.cf;
-  const g = (i,k) => cf ? data[k*n + i] : data[i*6 + k];
-  let mx = 0;
-  for (let i = 0; i < n; i++) mx = Math.max(mx, g(i,0), g(i,1), g(i,2), g(i,3));
-  const sc = mx <= 2 ? SIZE : 1;            // normalised (0-1) or pixel (0-640) boxes
-  let cand = [];
-  for (let i = 0; i < n; i++){
-    const s0 = g(i,4), s1 = g(i,5);
-    const conf = Math.max(s0, s1);
-    if (!(conf >= confThr)) continue;
-    const cls = s1 > s0 ? 1 : 0;
-    const cx = g(i,0)*sc, cy = g(i,1)*sc, w = g(i,2)*sc, h = g(i,3)*sc;
-    let x1 = (cx - w/2 - dx) / r, y1 = (cy - h/2 - dy) / r;
-    let x2 = (cx + w/2 - dx) / r, y2 = (cy + h/2 - dy) / r;
-    x1 = Math.max(0, Math.min(fw, x1)); x2 = Math.max(0, Math.min(fw, x2));
-    y1 = Math.max(0, Math.min(fh, y1)); y2 = Math.max(0, Math.min(fh, y2));
-    if (x2 - x1 < 2 || y2 - y1 < 2) continue;
-    cand.push({ cls, conf, x1, y1, x2, y2 });
-  }
-  cand.sort((a,b) => b.conf - a.conf);
-  cand = cand.slice(0, 300);
-  return nms(cand, 0.45);
-}
-
-/* ---------- fallback (no model) ---------- */
-const gcv = document.createElement('canvas');
-const gctx = gcv.getContext('2d', { willReadFrequently: true });
-function grayGrid(src, w, h){
-  gcv.width = w; gcv.height = h;
-  gctx.drawImage(src, 0, 0, w, h);
-  const d = gctx.getImageData(0, 0, w, h).data;
-  const g = new Float32Array(w*h);
-  for (let i = 0, p = 0; i < g.length; i++, p += 4) g[i] = 0.299*d[p] + 0.587*d[p+1] + 0.114*d[p+2];
-  return g;
-}
-function diffDetect(src, fw, fh){
-  const cw = S.clean.width, ch = S.clean.height;
-  if (Math.abs((cw/ch) / (fw/fh) - 1) > 0.15){
-    const e = new Error('The clean view has a different shape (portrait/landscape) than this frame. Save the clean view again with the same phone position and orientation.');
-    e.known = true; throw e;
-  }
-  const cols = 64, rows = Math.max(8, Math.round(cols * fh / fw));
-  const a = grayGrid(src, cols, rows);
-  const b = grayGrid(S.clean, cols, rows);
-  let ma = 0, mb = 0;
-  for (let i = 0; i < a.length; i++){ ma += a[i]; mb += b[i]; }
-  ma /= a.length; mb /= a.length;
-  const mask = new Uint8Array(a.length);
-  for (let i = 0; i < a.length; i++) mask[i] = Math.abs((a[i]-ma) - (b[i]-mb)) > 40 ? 1 : 0;
-  const seen = new Uint8Array(a.length), items = [];
-  for (let s = 0; s < mask.length; s++){
-    if (!mask[s] || seen[s]) continue;
-    const stack = [s]; seen[s] = 1;
-    let cnt = 0, minx = cols, maxx = 0, miny = rows, maxy = 0;
-    while (stack.length){
-      const p = stack.pop(); cnt++;
-      const x = p % cols, y = (p / cols) | 0;
-      if (x < minx) minx = x; if (x > maxx) maxx = x; if (y < miny) miny = y; if (y > maxy) maxy = y;
-      if (x > 0 && mask[p-1] && !seen[p-1]){ seen[p-1] = 1; stack.push(p-1); }
-      if (x < cols-1 && mask[p+1] && !seen[p+1]){ seen[p+1] = 1; stack.push(p+1); }
-      if (y > 0 && mask[p-cols] && !seen[p-cols]){ seen[p-cols] = 1; stack.push(p-cols); }
-      if (y < rows-1 && mask[p+cols] && !seen[p+cols]){ seen[p+cols] = 1; stack.push(p+cols); }
-    }
-    if (cnt >= 4) items.push({ cls: -1, conf: null,
-      x1: minx/cols*fw, y1: miny/rows*fh, x2: (maxx+1)/cols*fw, y2: (maxy+1)/rows*fh });
-  }
-  return items;
-}
-
-function saveClean(){
-  const el = currentSource();
-  if (!el){ return setStatus('Nothing to save yet. Start the camera or take a photo of the empty kitchen first.', 'warn'); }
-  const k = Math.min(1, 320 / el.fw);
-  const c = document.createElement('canvas');
-  c.width = Math.round(el.fw * k); c.height = Math.round(el.fh * k);
-  c.getContext('2d').drawImage(el.node, 0, 0, c.width, c.height);
-  S.clean = c; S.cleanTime = new Date();
-  let kept = false;
-  try { kept = store.set('cl_clean', c.toDataURL('image/jpeg', 0.7)); store.set('cl_clean_time', S.cleanTime.toISOString()); } catch(e){}
-  updateCleanInfo();
-  setStatus(kept ? 'Clean view saved.' : 'Clean view saved for this session only (the browser would not store it).', kept ? 'ok' : 'warn');
-}
-function deleteClean(){
-  S.clean = null; S.cleanTime = null; store.del('cl_clean'); store.del('cl_clean_time');
-  updateCleanInfo(); setStatus('Clean view deleted.', 'ok');
-}
-function updateCleanInfo(){
-  const el = $('cleanInfo');
-  if (S.clean){ el.textContent = 'Clean view saved' + (S.cleanTime ? ' at ' + S.cleanTime.toLocaleString() : '') + '.'; el.className = 'msg ok'; }
-  else { el.textContent = 'No clean view saved.'; el.className = 'msg'; }
-}
-(function restoreClean(){
-  const url = store.get('cl_clean'); if (!url) return;
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement('canvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext('2d').drawImage(img, 0, 0);
-    S.clean = c; const t = store.get('cl_clean_time'); S.cleanTime = t ? new Date(t) : null; updateCleanInfo();
-  };
-  img.onerror = () => store.del('cl_clean');
-  img.src = url;
-})();
-$('cleanBtn').addEventListener('click', saveClean);
-$('cleanDelBtn').addEventListener('click', deleteClean);
+const $=id=>document.getElementById(id);
+const S={stream:null,model:null,timer:null,next:0,wake:null,clean:null,hist:[],last:null,busy:false};
+const CLS=["solid","liquid","mess"],COL=["#ea7a0c","#1778f2","#8b5cf6"],PRE=["S","L","M"];
+const SZ=640,FB_THR=40,FB_MIN=4,FB_GW=64; // fallback: brightness change threshold, min blob cells, grid width
+const cap=document.createElement("canvas"),cx=cap.getContext("2d",{willReadFrequently:true});
+const lb=document.createElement("canvas"),lx=lb.getContext("2d");
+const vid=$("vid"),ov=$("ov"),octx=ov.getContext("2d");
+function msg(t,err){$("msg").textContent=t;$("msg").className=err?"err":"";}
+function setMode(){$("mode").textContent=S.model?"AI model ready":S.clean?"Fallback mode":"No model";}
 
 /* ---------- camera ---------- */
-const video = $('video'), photoImg = $('photoImg');
-
-function showMedia(which){
-  video.style.display = which === 'video' ? 'block' : 'none';
-  photoImg.style.display = which === 'photo' ? 'block' : 'none';
-  $('camMsg').style.display = which ? 'none' : 'flex';
-}
-function currentSource(){
-  if (S.running && video.videoWidth) return { node: video, fw: video.videoWidth, fh: video.videoHeight, kind: 'Live' };
-  if (S.photo) return { node: S.photo, fw: S.photo.naturalWidth, fh: S.photo.naturalHeight, kind: 'Photo' };
-  return null;
-}
-function camError(e){
-  const n = e && e.name;
-  let m;
-  if (n === 'NotAllowedError' || n === 'PermissionDeniedError') m = 'Camera permission was denied. Allow camera access for this site in your browser settings, then tap Start monitoring again. You can also use “Take photo”.';
-  else if (n === 'NotFoundError' || n === 'DevicesNotFoundError') m = 'No camera was found on this device. Use “Take photo” instead.';
-  else if (n === 'NotReadableError' || n === 'TrackStartError' || n === 'AbortError') m = 'The camera is in use by another app or tab. Close other apps that use the camera and try again, or use “Take photo”.';
-  else if (n === 'SecurityError') m = MSG_NO_HTTPS;
-  else m = 'The camera could not be opened' + (e && e.message ? ' (' + e.message + ')' : '') + '. Use “Take photo” instead.';
-  setStatus(m, 'err');
-}
-async function startCamera(){
-  if (S.running) return;
-  if (!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
-    return setStatus(MSG_NO_HTTPS, 'err');
-  }
-  const st = getSettings();
-  setStatus('Opening camera …');
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false });
-  } catch(e){
-    if (e && (e.name === 'OverconstrainedError' || e.name === 'ConstraintNotSatisfiedError')){
-      try { stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false }); }
-      catch(e2){ return camError(e2); }
-    } else return camError(e);
-  }
-  S.stream = stream; video.srcObject = stream;
-  stream.getVideoTracks().forEach(t => t.addEventListener('ended', () => {
-    if (S.running){ stopCamera(); setStatus('The camera stopped unexpectedly. Tap Start monitoring to open it again.', 'err'); }
-  }));
-  try { await video.play(); } catch(e){ /* autoplay is retried by the browser */ }
-  S.running = true; S.photo = null; S.dims = null; S.dets = []; draw();
-  showMedia('video');
-  S.nextAt = Date.now() + 2000;
-  updateButtons(); requestWake();
-  setStatus('Monitoring started. First scan in a moment, then every ' + st.interval + ' s.', 'ok');
-}
-function stopCamera(){
-  if (S.stream){ S.stream.getTracks().forEach(t => t.stop()); S.stream = null; }
-  video.srcObject = null; S.running = false; S.dims = null; draw();
-  showMedia(S.photo ? 'photo' : null);
-  releaseWake(); updateButtons();
-}
-async function requestWake(){
-  if (!('wakeLock' in navigator)){
-    if (!S.wakeWarned){ S.wakeWarned = true; setStatus('Monitoring started, but this browser cannot keep the screen awake. Change your phone’s auto-lock setting so scans keep running.', 'warn'); }
-    return;
-  }
-  try {
-    S.wake = await navigator.wakeLock.request('screen');
-    S.wake.addEventListener('release', () => { S.wake = null; });
-  } catch(e){
-    if (!S.wakeWarned){ S.wakeWarned = true; setStatus('The screen could not be kept awake (' + e.message + '). Change your phone’s auto-lock setting so scans keep running.', 'warn'); }
-  }
-}
-function releaseWake(){ if (S.wake){ try { S.wake.release(); } catch(e){} S.wake = null; } }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.running && !S.wake) requestWake(); });
-
-$('startBtn').addEventListener('click', startCamera);
-$('stopBtn').addEventListener('click', () => { stopCamera(); setStatus('Monitoring stopped.', ''); });
-$('scanBtn').addEventListener('click', () => scan());
-$('photoBtn').addEventListener('click', () => $('photoInput').click());
-$('photoInput').addEventListener('change', e => {
-  const f = e.target.files && e.target.files[0]; e.target.value = '';
-  if (!f) return;
-  if (!/^image\//.test(f.type)) return setStatus('That file is not an image. Choose a photo.', 'err');
-  const url = URL.createObjectURL(f), img = new Image();
-  img.onload = () => {
-    if (S.running) stopCamera();
-    S.photo = img; photoImg.src = url; showMedia('photo'); S.dims = null; S.dets = []; draw();
-    updateButtons(); scan();
-  };
-  img.onerror = () => { URL.revokeObjectURL(url); setStatus('The photo could not be opened. Try taking it again.', 'err'); };
-  img.src = url;
-});
-function updateButtons(){
-  $('startBtn').disabled = S.running;
-  $('stopBtn').disabled = !S.running;
-  $('scanBtn').disabled = S.busy;
-}
-
-/* ---------- scanning ---------- */
-async function scan(){
-  if (S.busy) return;
-  const src = currentSource();
-  if (!src){
-    if (S.running) return setStatus('The camera is not ready yet. Wait a moment and try again.', 'warn');
-    return setStatus('Start monitoring or tap Take photo first.', 'warn');
-  }
-  S.busy = true; updateButtons(); setStatus('Scanning …');
-  const st = getSettings();
-  try {
-    let items, mode;
-    if (S.model){ items = await infer(src.node, src.fw, src.fh, st.conf); mode = 'AI'; }
-    else {
-      if (!S.clean){
-        const e = new Error('No model is loaded and no clean view is saved. Load the model (see AI model below) or save a clean view of the empty kitchen first.');
-        e.known = true; throw e;
-      }
-      items = diffDetect(src.node, src.fw, src.fh); mode = 'Compare';
+async function startCam(){
+  if(!window.isSecureContext||!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){msg("Camera needs HTTPS and a supported browser. Use “Take photo” instead.",1);return false;}
+  try{
+    msg("Asking for camera permission… tap Allow.");
+    S.stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:"environment"},width:{ideal:1280},height:{ideal:720}},audio:false});
+    vid.srcObject=S.stream;await vid.play();vid.hidden=false;$("ph").hidden=true;
+    $("stage").style.aspectRatio=vid.videoWidth+"/"+vid.videoHeight;msg("Camera ready.");return true;
+  }catch(e){
+    let m;
+    if(e.name==="NotAllowedError"){
+      m="Chrome or Android blocked camera access. In Chrome, open this site's settings → Permissions → Camera → Allow, then reload. Also check Android Settings → Apps → Chrome → Permissions → Camera. If this page is embedded in another app/site, open it directly in Chrome.";
+    }else if(e.name==="NotFoundError"){
+      m="No available camera was found. Check that your phone has a working camera.";
+    }else if(e.name==="NotReadableError"){
+      m="The camera is busy or unavailable. Close other apps using the camera and retry.";
+    }else if(e.name==="OverconstrainedError"){
+      m="The requested camera settings are unsupported. Retrying with basic camera settings may help.";
+    }else if(e.name==="SecurityError"||!window.isSecureContext){
+      m="Camera access is blocked because this page is not in a secure context. Open it using HTTPS (or localhost while developing).";
+    }else{
+      m="Camera error: "+e.name+(e.message?" — "+e.message:"");
     }
-    const cmpp = 2 * st.height * Math.tan(st.fov * Math.PI / 360) / Math.max(src.fw, src.fh);
-    const counts = [0, 0, 0];
-    items.sort((a,b) => (a.cls - b.cls) || ((b.conf||0) - (a.conf||0)));
-    items.forEach(d => {
-      const def = d.cls < 0 ? UNK : CLS[d.cls];
-      const idx = d.cls < 0 ? 2 : d.cls;
-      d.def = def; d.n = ++counts[idx];
-      d.label = def.tag + d.n + ' ' + def.key + (d.conf != null ? ' ' + Math.round(d.conf * 100) + '%' : '');
-      const bw = (d.x2 - d.x1) * cmpp, bh = (d.y2 - d.y1) * cmpp;
-      d.area = bw * bh; d.length = Math.max(bw, bh); d.width = Math.min(bw, bh);
-      d.diam = Math.sqrt(4 * d.area / Math.PI);
-      d.px = (d.x1 + d.x2) / 2 * cmpp; d.py = (d.y1 + d.y2) / 2 * cmpp;
-      const col = Math.min(2, Math.floor((d.x1 + d.x2) / 2 / src.fw * 3));
-      const row = Math.min(2, Math.floor((d.y1 + d.y2) / 2 / src.fh * 3));
-      d.zone = 'ABC'[row] + (col + 1);
-    });
-    const area = items.reduce((s,d) => s + d.area, 0);
-    const res = { time: new Date(), kind: src.kind, mode, fw: src.fw, fh: src.fh, cmpp, st, items,
-      solid: counts[0], liquid: counts[1], unk: counts[2], area };
-    S.last = res; S.dets = items; S.dims = { fw: src.fw, fh: src.fh };
-    S.history.unshift(res); S.history = S.history.slice(0, 30);
-    draw(); renderResults(res);
-    const t = res.time.toLocaleTimeString();
-    if (items.length){
-      if (navigator.vibrate){ try { navigator.vibrate([300,150,300]); } catch(e){} }
-      setStatus('Scan at ' + t + ': ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' found.', 'warn');
-    } else {
-      setStatus('Scan at ' + t + ': ' + (mode === 'AI' ? 'the model found nothing at this threshold.' : 'no changes found compared with the clean view.'), 'ok');
-    }
-  } catch(e){
-    setStatus(e.known ? e.message : 'Scan failed: ' + (e && e.message ? e.message : e), 'err');
-  } finally {
-    S.busy = false; updateButtons();
-    S.nextAt = Date.now() + getSettings().interval * 1000;
-  }
+    msg(m+" You can still use “Take photo”.",1);return false;}
+}
+async function wake(){try{if("wakeLock" in navigator)S.wake=await navigator.wakeLock.request("screen");}catch(e){}}
+document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&S.timer)wake();});
+function stopAll(){clearInterval(S.timer);S.timer=null;$("cd").textContent="";
+  if(S.stream){S.stream.getTracks().forEach(t=>t.stop());S.stream=null;}vid.hidden=true;
+  if(S.wake){S.wake.release().catch(()=>{});S.wake=null;}msg("Stopped.");}
+function grab(){let W=vid.videoWidth,H=vid.videoHeight;if(!W)return false;cap.width=W;cap.height=H;cx.drawImage(vid,0,0);return true;}
+
+/* ---------- model ---------- */
+async function loadModel(){
+  const fs=[...$("mfiles").files],j=fs.find(f=>f.name.endsWith(".json")),bins=fs.filter(f=>f.name.endsWith(".bin"));
+  if(!j||!bins.length){msg("Select model.json AND every .bin file in one go.",1);return;}
+  try{if(!window.tf)throw new Error("TensorFlow.js not loaded (internet needed once).");
+    msg("Loading model…");await tf.ready();
+    S.model=await tf.loadGraphModel(tf.io.browserFiles([j,...bins]));
+    tf.dispose(S.model.predict(tf.zeros([1,SZ,SZ,3])));
+    setMode();msg("Model loaded ("+bins.length+" weight files).");
+  }catch(e){S.model=null;setMode();msg("Model load failed: "+e.message,1);}
+}
+async function detectModel(thr){
+  const W=cap.width,H=cap.height,r=Math.min(SZ/W,SZ/H),nw=W*r,nh=H*r,px=(SZ-nw)/2,py=(SZ-nh)/2;
+  lb.width=lb.height=SZ;lx.fillStyle="#727272";lx.fillRect(0,0,SZ,SZ);lx.drawImage(cap,px,py,nw,nh);
+  const out=tf.tidy(()=>{let o=S.model.predict(tf.browser.fromPixels(lb).toFloat().div(255).expandDims(0));
+    if(!(o instanceof tf.Tensor))o=Array.isArray(o)?o[0]:Object.values(o)[0];return o;});
+  const sh=out.shape,d=await out.data();out.dispose();
+  const cf=sh[1]<sh[2],C=cf?sh[1]:sh[2],N=cf?sh[2]:sh[1];
+  if(C!==4+2)throw new Error("Model output has "+C+" channels, expected 6 (4 box + 2 classes).");
+  const g=(c,i)=>cf?d[c*N+i]:d[i*C+c],c=[];let mx=0;
+  for(let i=0;i<N;i++){const a=g(4,i),b=g(5,i),s=Math.max(a,b);if(s<thr)continue;
+    const o={cx:g(0,i),cy:g(1,i),w:g(2,i),h:g(3,i),conf:s,cls:b>a?1:0};mx=Math.max(mx,o.cx,o.cy,o.w,o.h);c.push(o);}
+  const k=mx<=1.5?SZ:1; // some exports give normalised boxes
+  const bx=c.map(o=>({x1:Math.max(0,((o.cx-o.w/2)*k-px)/r),y1:Math.max(0,((o.cy-o.h/2)*k-py)/r),x2:Math.min(W,((o.cx+o.w/2)*k-px)/r),y2:Math.min(H,((o.cy+o.h/2)*k-py)/r),conf:o.conf,cls:o.cls}));
+  return nms(bx,0.45);
+}
+function iou(a,b){const w=Math.min(a.x2,b.x2)-Math.max(a.x1,b.x1),h=Math.min(a.y2,b.y2)-Math.max(a.y1,b.y1);if(w<=0||h<=0)return 0;const i=w*h;return i/((a.x2-a.x1)*(a.y2-a.y1)+(b.x2-b.x1)*(b.y2-b.y1)-i);}
+function nms(b,t){b.sort((p,q)=>q.conf-p.conf);const k=[];for(const o of b)if(!k.some(p=>p.cls===o.cls&&iou(p,o)>t))k.push(o);return k;}
+
+/* ---------- fallback: compare with clean view ---------- */
+function lum(src,gw,gh){const c=document.createElement("canvas");c.width=gw;c.height=gh;const x=c.getContext("2d",{willReadFrequently:true});x.drawImage(src,0,0,gw,gh);
+  const d=x.getImageData(0,0,gw,gh).data,L=new Float32Array(gw*gh);let m=0;for(let i=0;i<L.length;i++){L[i]=.299*d[4*i]+.587*d[4*i+1]+.114*d[4*i+2];m+=L[i];}return{L,m:m/L.length};}
+function detectFallback(){
+  const W=cap.width,H=cap.height,gw=FB_GW,gh=Math.max(1,Math.round(gw*H/W)),a=lum(S.clean,gw,gh),b=lum(cap,gw,gh),sh=b.m-a.m,mask=new Uint8Array(gw*gh);
+  for(let i=0;i<mask.length;i++)mask[i]=Math.abs(b.L[i]-a.L[i]-sh)>FB_THR?1:0; // brightness-normalised difference
+  const out=[];
+  for(let s=0;s<mask.length;s++){if(mask[s]!==1)continue;const st=[s];mask[s]=2;let n=0,x1=gw,y1=gh,x2=0,y2=0;
+    while(st.length){const p=st.pop(),x=p%gw,y=(p/gw)|0;n++;x1=Math.min(x1,x);x2=Math.max(x2,x);y1=Math.min(y1,y);y2=Math.max(y2,y);
+      for(const q of[x>0?p-1:-1,x<gw-1?p+1:-1,y>0?p-gw:-1,y<gh-1?p+gw:-1])if(q>=0&&mask[q]===1){mask[q]=2;st.push(q);}}
+    if(n>=FB_MIN)out.push({x1:x1*W/gw,y1:y1*H/gh,x2:(x2+1)*W/gw,y2:(y2+1)*H/gh,conf:null,cls:2});}
+  return out;
+}
+function saveClean(){
+  if(!(S.stream&&grab())){msg("Start the camera (or take a photo) first.",1);return;}
+  S.clean=document.createElement("canvas");S.clean.width=cap.width;S.clean.height=cap.height;S.clean.getContext("2d").drawImage(cap,0,0);
+  try{const t=document.createElement("canvas");t.width=320;t.height=Math.round(320*cap.height/cap.width);t.getContext("2d").drawImage(cap,0,0,t.width,t.height);localStorage.setItem("cl_clean",t.toDataURL("image/jpeg",.8));}catch(e){}
+  $("cstat").textContent="Clean view saved "+new Date().toLocaleTimeString()+".";setMode();msg("Clean view saved.");
+}
+try{const u=localStorage.getItem("cl_clean");if(u){const i=new Image();i.onload=()=>{S.clean=document.createElement("canvas");S.clean.width=i.width;S.clean.height=i.height;S.clean.getContext("2d").drawImage(i,0,0);$("cstat").textContent="Restored saved clean view.";setMode();};i.src=u;}}catch(e){}
+
+/* ---------- measurement ---------- */
+function measure(d,W,H,cm){
+  const w=d.x2-d.x1,h=d.y2-d.y1,A=w*h*cm*cm,mx=(d.x1+d.x2)/2,my=(d.y1+d.y2)/2;
+  return{len:Math.max(w,h)*cm,wid:Math.min(w,h)*cm,area:A,dia:Math.sqrt(4*A/Math.PI),px:mx*cm,py:my*cm,
+    zone:"ABC"[Math.min(2,Math.floor(my/H*3))]+(Math.min(2,Math.floor(mx/W*3))+1)};
+}
+const f1=v=>v.toFixed(1);
+
+/* ---------- scan ---------- */
+async function runScan(photo){
+  if(S.busy)return;S.busy=true;
+  try{
+    const thr=+$("thr").value||.25;let dets,mode;
+    if(S.model){dets=await detectModel(thr);mode="AI model";}
+    else if(S.clean){dets=detectFallback();mode="Fallback";}
+    else{msg("Load a model or save a clean view first.",1);return;}
+    const W=cap.width,H=cap.height,cm=2*(+$("hgt").value)*Math.tan((+$("fov").value)*Math.PI/360)/Math.max(W,H);
+    const cnt=[0,0,0];dets.forEach(d=>{Object.assign(d,measure(d,W,H,cm));d.id=PRE[d.cls]+(++cnt[d.cls]);});
+    draw(dets,photo);show(dets,cm,mode);
+  }catch(e){msg("Scan failed: "+e.message,1);}finally{S.busy=false;}
+}
+async function scanNow(){
+  if(S.stream){if(!grab()){msg("Camera not ready yet.",1);return;}vid.hidden=false;}
+  else if(!S.photoLoaded){msg("Start the camera or take a photo first.",1);return;}
+  await runScan(!S.stream);
+}
+function draw(dets,photo){
+  ov.width=cap.width;ov.height=cap.height;if(photo){vid.hidden=true;$("ph").hidden=true;$("stage").style.aspectRatio=cap.width+"/"+cap.height;octx.drawImage(cap,0,0);}
+  const lw=Math.max(2,cap.width/300),fs=lw*7;octx.lineWidth=lw;octx.font="bold "+fs+"px system-ui";octx.textBaseline="top";
+  dets.forEach(d=>{octx.strokeStyle=COL[d.cls];octx.strokeRect(d.x1,d.y1,d.x2-d.x1,d.y2-d.y1);
+    const t=d.id+" "+CLS[d.cls]+(d.conf!=null?" "+Math.round(d.conf*100)+"%":""),tw=octx.measureText(t).width+8;
+    octx.fillStyle=COL[d.cls];octx.fillRect(d.x1,Math.max(0,d.y1-fs-6),tw,fs+6);octx.fillStyle="#fff";octx.fillText(t,d.x1+4,Math.max(0,d.y1-fs-6)+3);});
+}
+function show(dets,cm,mode){
+  const n=[0,0,0];let tot=0;dets.forEach(d=>{n[d.cls]++;tot+=d.area;});
+  $("nS").textContent=n[0];$("nL").textContent=n[1];$("nA").textContent=Math.round(tot);
+  $("items").innerHTML=dets.length?dets.map(d=>`<div class="card it" style="border-left-color:${COL[d.cls]}"><b>${d.id} · ${CLS[d.cls]}${d.conf!=null?" · "+Math.round(d.conf*100)+"%":""}</b><br>Area ${f1(d.area)} cm² · Length ${f1(d.len)} cm · Width ${f1(d.wid)} cm<br>Diameter ${f1(d.dia)} cm · Position ${f1(d.px)}, ${f1(d.py)} cm · Zone ${d.zone}</div>`).join(""):"No mess detected.";
+  S.last={time:new Date(),mode,dets,n,tot,cm,W:cap.width,H:cap.height};
+  S.hist.unshift({t:S.last.time.toLocaleTimeString(),mode,n,tot});if(S.hist.length>30)S.hist.pop();
+  $("hist").innerHTML=S.hist.map(h=>`<div class="card" style="margin-bottom:6px">${h.t} · ${h.mode} · solid ${h.n[0]}, liquid ${h.n[1]}${h.n[2]?", unclassified "+h.n[2]:""} · ${Math.round(h.tot)} cm²</div>`).join("");
+  const bad=dets.length>0;$("alert").hidden=!bad;if(bad&&navigator.vibrate)navigator.vibrate([300,120,300]);
+  msg(`${mode}: ${dets.length} item(s). Frame covers ${f1(cm*cap.width)} × ${f1(cm*cap.height)} cm (${(cm).toFixed(3)} cm/px).`);
 }
 
-/* ---------- drawing & UI ---------- */
-function draw(){
-  const box = $('camBox'), cv = $('overlay');
-  const dpr = window.devicePixelRatio || 1, W = box.clientWidth, H = box.clientHeight;
-  if (cv.width !== Math.round(W*dpr) || cv.height !== Math.round(H*dpr)){ cv.width = Math.round(W*dpr); cv.height = Math.round(H*dpr); }
-  const ctx = cv.getContext('2d');
-  ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, W, H);
-  if (!S.dims || !S.dets.length) return;
-  const { fw, fh } = S.dims;
-  const k = Math.min(W / fw, H / fh), ox = (W - fw*k) / 2, oy = (H - fh*k) / 2;
-  ctx.lineWidth = 3; ctx.font = 'bold 13px system-ui,sans-serif'; ctx.textBaseline = 'middle';
-  for (const d of S.dets){
-    const x = ox + d.x1*k, y = oy + d.y1*k, w = (d.x2-d.x1)*k, h = (d.y2-d.y1)*k;
-    ctx.strokeStyle = d.def.color; ctx.strokeRect(x, y, w, h);
-    const tw = ctx.measureText(d.label).width + 10;
-    const ly = y - 20 >= 0 ? y - 20 : y;
-    ctx.fillStyle = d.def.color; ctx.fillRect(x, ly, tw, 20);
-    ctx.fillStyle = '#fff'; ctx.fillText(d.label, x + 5, ly + 10);
-  }
+/* ---------- monitoring ---------- */
+async function startMon(){
+  if(!(await startCam()))return;await wake();
+  if(!S.model&&!S.clean)msg("Camera on. Load a model or save a clean view, then scans will run.",1);
+  clearInterval(S.timer);const iv=()=>Math.max(5,+$("iv").value||60)*1000;S.next=Date.now()+1500;
+  S.timer=setInterval(()=>{const left=S.next-Date.now();$("cd").textContent="Next scan in "+Math.max(0,Math.ceil(left/1000))+" s";
+    if(left<=0){S.next=Date.now()+iv();scanNow();}},500);
 }
-if (window.ResizeObserver) new ResizeObserver(draw).observe($('camBox')); else addEventListener('resize', draw);
-
-const f1 = n => (Math.round(n * 10) / 10).toFixed(1);
-function renderResults(r){
-  $('cSolid').textContent = r.solid; $('cLiquid').textContent = r.liquid; $('cArea').textContent = f1(r.area);
-  const al = $('alert');
-  if (r.items.length){
-    al.classList.add('on');
-    const parts = [];
-    if (r.solid) parts.push(r.solid + ' solid'); if (r.liquid) parts.push(r.liquid + ' liquid'); if (r.unk) parts.push(r.unk + ' changed area' + (r.unk === 1 ? '' : 's'));
-    $('alertSub').textContent = parts.join(' · ');
-  } else al.classList.remove('on');
-
-  const box = $('items'); box.textContent = '';
-  if (!r.items.length){ const p = document.createElement('p'); p.className = 'empty'; p.textContent = 'No items in the latest scan.'; box.appendChild(p); }
-  r.items.forEach(d => {
-    const div = document.createElement('div'); div.className = 'item'; div.style.borderLeftColor = d.def.color;
-    const b = document.createElement('b'); b.textContent = d.label + (d.cls < 0 ? ' (unclassified)' : ''); div.appendChild(b);
-    const dl = document.createElement('dl');
-    [['Area', f1(d.area) + ' cm²'], ['Length', f1(d.length) + ' cm'], ['Width', f1(d.width) + ' cm'],
-     ['Diameter', f1(d.diam) + ' cm'], ['Position', 'x ' + f1(d.px) + ' cm, y ' + f1(d.py) + ' cm'], ['Zone', d.zone]
-    ].forEach(([k,v]) => { const dt = document.createElement('dt'), dd = document.createElement('dd'); dt.textContent = k; dd.textContent = v; dl.append(dt, dd); });
-    div.appendChild(dl); box.appendChild(div);
-  });
-
-  const ul = $('hist'); ul.textContent = '';
-  S.history.forEach(h => {
-    const li = document.createElement('li');
-    li.textContent = h.time.toLocaleTimeString() + ' · ' + h.kind + ' · ' + h.mode + ' — solid ' + h.solid + ', liquid ' + h.liquid +
-      (h.unk ? ', changed ' + h.unk : '') + ', ' + f1(h.area) + ' cm²';
-    ul.appendChild(li);
-  });
-}
+$("start").onclick=startMon;$("stop").onclick=stopAll;$("scan").onclick=scanNow;$("load").onclick=loadModel;$("clean").onclick=saveClean;
+$("iv").onchange=()=>{S.next=Date.now()+Math.max(5,+$("iv").value||60)*1000;};
+$("photo").onchange=async e=>{const f=e.target.files[0];if(!f)return;
+  try{const bm=await createImageBitmap(f),s=Math.min(1,1600/Math.max(bm.width,bm.height));cap.width=Math.round(bm.width*s);cap.height=Math.round(bm.height*s);cx.drawImage(bm,0,0,cap.width,cap.height);S.photoLoaded=true;
+    if(S.stream){stopAll();}await runScan(true);}catch(err){msg("Could not read the photo: "+err.message,1);}e.target.value="";};
+$("theme").onclick=()=>{const r=document.documentElement,o=["auto","light","dark"],n=o[(o.indexOf(r.dataset.theme||"auto")+1)%3];r.dataset.theme=n;msg("Theme: "+n);};
 
 /* ---------- report ---------- */
-function buildReport(){
-  const r = S.last; if (!r) return null;
-  const L = ['CLEANSERS AI REPORT', 'Time: ' + r.time.toLocaleString(), 'Source / mode: ' + r.kind + ' / ' + (r.mode === 'AI' ? 'AI model' : 'Compare with clean view'),
-    'Scale: ' + r.cmpp.toFixed(4) + ' cm per pixel (phone height ' + r.st.height + ' cm, FOV ' + r.st.fov + '°, frame ' + r.fw + '×' + r.fh + ' px)',
-    'Confidence threshold: ' + r.st.conf,
-    'Solid: ' + r.solid + ' | Liquid: ' + r.liquid + (r.unk ? ' | Changed (unclassified): ' + r.unk : '') + ' | Total area: ' + f1(r.area) + ' cm²', '', 'ITEMS'];
-  if (!r.items.length) L.push('(none)');
-  r.items.forEach(d => L.push(d.label + ' | area ' + f1(d.area) + ' cm² | length ' + f1(d.length) + ' cm | width ' + f1(d.width) +
-    ' cm | diameter ' + f1(d.diam) + ' cm | position x ' + f1(d.px) + ', y ' + f1(d.py) + ' cm | zone ' + d.zone));
-  L.push('', 'HISTORY (newest first)');
-  S.history.forEach(h => L.push(h.time.toLocaleString() + ' | ' + h.kind + ' | ' + h.mode + ' | solid ' + h.solid + ' | liquid ' + h.liquid + (h.unk ? ' | changed ' + h.unk : '') + ' | ' + f1(h.area) + ' cm²'));
-  return L.join('\n');
-}
-async function copyReport(){
-  const out = $('copyMsg'); out.style.display = 'block';
-  const txt = buildReport();
-  if (!txt){ out.textContent = 'Nothing to copy yet. Run a scan first.'; out.className = 'msg'; return; }
-  try {
-    if (navigator.clipboard && window.isSecureContext) await navigator.clipboard.writeText(txt);
-    else {
-      const ta = document.createElement('textarea'); ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
-      document.body.appendChild(ta); ta.select();
-      const ok = document.execCommand('copy'); ta.remove(); if (!ok) throw new Error('copy command blocked');
-    }
-    out.textContent = 'Report copied to the clipboard.'; out.className = 'msg ok';
-  } catch(e){
-    out.textContent = 'The report could not be copied (' + e.message + '). Your browser blocked clipboard access.'; out.className = 'msg err';
-  }
-}
-$('copyBtn').addEventListener('click', copyReport);
-
-/* ---------- countdown loop ---------- */
-setInterval(() => {
-  const cd = $('countdown');
-  if (!S.running){ cd.textContent = 'Monitoring is off'; return; }
-  if (S.busy){ cd.textContent = 'Scanning …'; return; }
-  const left = Math.max(0, Math.ceil((S.nextAt - Date.now()) / 1000));
-  cd.textContent = 'Next scan in ' + left + ' s';
-  if (left === 0) scan();
-}, 500);
-
-/* ---------- start ---------- */
-if (!window.isSecureContext) setStatus(MSG_NO_HTTPS, 'warn');
-updateButtons();
-loadAuto();
-})();
-</script>
-</body>
-</html>
+$("copy").onclick=async()=>{
+  if(!S.last){msg("Run a scan first.",1);return;}const L=S.last;
+  let t=`Cleansers AI report\nTime: ${L.time.toLocaleString()}\nMode: ${L.mode}\nSolid: ${L.n[0]} | Liquid: ${L.n[1]}${L.n[2]?" | Unclassified: "+L.n[2]:""} | Total area: ${Math.round(L.tot)} cm²\nScale: ${L.cm.toFixed(4)} cm/px at ${$("hgt").value} cm, FOV ${$("fov").value}°\n`;
+  L.dets.forEach(d=>{t+=`${d.id} ${CLS[d.cls]}: area ${f1(d.area)} cm², L ${f1(d.len)} cm, W ${f1(d.wid)} cm, dia ${f1(d.dia)} cm, pos (${f1(d.px)}, ${f1(d.py)}) cm, zone ${d.zone}\n`;});
+  t+="History:\n"+S.hist.map(h=>`${h.t} solid ${h.n[0]} liquid ${h.n[1]} area ${Math.round(h.tot)} cm²`).join("\n");
+  try{await navigator.clipboard.writeText(t);msg("Report copied.");}catch(e){const a=document.createElement("textarea");a.value=t;document.body.appendChild(a);a.select();try{document.execCommand("copy");msg("Report copied.");}catch(x){msg("Copy failed.",1);}a.remove();}
+};
+</script></body></html>
