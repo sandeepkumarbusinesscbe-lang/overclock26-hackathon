@@ -154,10 +154,10 @@ ul.hist li:last-child{border-bottom:0}
 
   <section class="card">
     <h2>Settings</h2>
-    <label class="f">Scan every (seconds, minimum 5)
-      <input id="setInterval" type="number" inputmode="numeric" min="5" step="1" value="60"></label>
+    <label class="f">Live scan every (seconds, minimum 0.5)
+      <input id="setInterval" type="number" inputmode="decimal" min="0.5" step="0.5" value="1"></label>
     <label class="f">Confidence threshold (0.05 – 0.95)
-      <input id="setConf" type="number" inputmode="decimal" min="0.05" max="0.95" step="0.05" value="0.25"></label>
+      <input id="setConf" type="number" inputmode="decimal" min="0.05" max="0.95" step="0.05" value="0.15"></label>
     <label class="f">Phone height above the surface (cm)
       <input id="setHeight" type="number" inputmode="decimal" min="10" step="1" value="100"></label>
     <label class="f" style="margin-bottom:0">Camera field of view across the long side (degrees)
@@ -252,8 +252,8 @@ $('themeBtn').addEventListener('click', () => {
 
 /* ---------- settings ---------- */
 const FIELDS = [
-  ['setInterval','interval',60,5,3600],
-  ['setConf','conf',0.25,0.05,0.95],
+  ['setInterval','interval',1,0.5,3600],
+  ['setConf','conf',0.15,0.05,0.95],
   ['setHeight','height',100,10,1000],
   ['setFov','fov',66,20,140]
 ];
@@ -270,11 +270,11 @@ function getSettings(){
   return out;
 }
 (function loadSettings(){
-  const raw = store.get('cl_settings'); if (!raw) return;
+  const raw = store.get('cl_settings_v2'); if (!raw) return;
   try { const o = JSON.parse(raw); for (const [id,key] of FIELDS) if (o[key] != null) $(id).value = o[key]; } catch(e){}
 })();
 FIELDS.forEach(([id]) => $(id).addEventListener('change', () => {
-  const s = getSettings(); store.set('cl_settings', JSON.stringify(s));
+  const s = getSettings(); store.set('cl_settings_v2', JSON.stringify(s));
   if (S.running) S.nextAt = Date.now() + s.interval * 1000;
 }));
 
@@ -609,7 +609,7 @@ async function scan(){
     if (S.running) return setStatus('The camera is not ready yet. Wait a moment and try again.', 'warn');
     return setStatus('Start monitoring or tap Take photo first.', 'warn');
   }
-  S.busy = true; updateButtons(); setStatus('Scanning …');
+  S.busy = true; updateButtons(); if (!S.running) setStatus('Scanning …');
   const st = getSettings();
   try {
     let items, mode;
@@ -641,11 +641,13 @@ async function scan(){
     const res = { time: new Date(), kind: src.kind, mode, fw: src.fw, fh: src.fh, cmpp, st, items,
       solid: counts[0], liquid: counts[1], unk: counts[2], area };
     S.last = res; S.dets = items; S.dims = { fw: src.fw, fh: src.fh };
-    S.history.unshift(res); S.history = S.history.slice(0, 30);
+    const prev = S.history[0], changed = !prev || prev.solid !== res.solid || prev.liquid !== res.liquid || prev.unk !== res.unk;
+    if (!S.running || changed){ S.history.unshift(res); S.history = S.history.slice(0, 30); }
+    const hadBefore = S.hadItems; S.hadItems = items.length > 0;
     draw(); renderResults(res);
     const t = res.time.toLocaleTimeString();
     if (items.length){
-      if (navigator.vibrate){ try { navigator.vibrate([300,150,300]); } catch(e){} }
+      if (navigator.vibrate && (!S.running || !hadBefore)){ try { navigator.vibrate([300,150,300]); } catch(e){} }
       setStatus('Scan at ' + t + ': ' + items.length + ' item' + (items.length === 1 ? '' : 's') + ' found.', 'warn');
     } else {
       setStatus('Scan at ' + t + ': ' + (mode === 'AI' ? 'the model found nothing at this threshold.' : 'no changes found compared with the clean view.'), 'ok');
@@ -749,10 +751,10 @@ setInterval(() => {
   const cd = $('countdown');
   if (!S.running){ cd.textContent = 'Monitoring is off'; return; }
   if (S.busy){ cd.textContent = 'Scanning …'; return; }
-  const left = Math.max(0, Math.ceil((S.nextAt - Date.now()) / 1000));
-  cd.textContent = 'Next scan in ' + left + ' s';
-  if (left === 0) scan();
-}, 500);
+  const ms = Math.max(0, S.nextAt - Date.now());
+  cd.textContent = 'LIVE: scanning every ' + getSettings().interval + ' s';
+  if (ms === 0) scan();
+}, 200);
 
 /* ---------- ESP32 over Bluetooth + floating dot ---------- */
 (function(){
