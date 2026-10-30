@@ -212,9 +212,15 @@ ul.hist li:last-child{border-bottom:0}
 const $ = id => document.getElementById(id);
 const SIZE = 640;
 const MODEL_URL = './best.onnx';
+/* Order MUST match the model's class order (data.yaml names). group: 0 = solid, 1 = liquid */
 const CLS = [
-  { key: 'solid',  tag: 'S', color: '#ea7a0c' },
-  { key: 'liquid', tag: 'L', color: '#1778f2' }
+  { key: 'food',    group: 0, tag: 'S', color: '#ea7a0c' },  // 0 food + generic solid waste
+  { key: 'paper',   group: 0, tag: 'S', color: '#d97706' },  // 1 paper
+  { key: 'plastic', group: 0, tag: 'S', color: '#c2410c' },  // 2 plastic
+  { key: 'sponge',  group: 0, tag: 'S', color: '#b45309' },  // 3 sponge
+  { key: 'oil',     group: 1, tag: 'L', color: '#1d4ed8' },  // 4 oil spill
+  { key: 'juice',   group: 1, tag: 'L', color: '#0ea5e9' },  // 5 juice + juice spill
+  { key: 'water',   group: 1, tag: 'L', color: '#1778f2' }   // 6 water spill
 ];
 const UNK = { key: 'changed', tag: 'U', color: '#8b5cf6' };
 
@@ -291,10 +297,11 @@ function layoutOf(shape){
   while (s.length > 2 && s[0] === 1) s.shift();
   if (s.length === 2){
     const [a,b] = s;
-    if (a === 6) return { cf: true, n: b };
-    if (b === 6) return { cf: false, n: a };
+    const ch = 4 + CLS.length;
+    if (a === ch) return { cf: true, n: b, ch };
+    if (b === ch) return { cf: false, n: a, ch };
   }
-  const e = new Error('Wrong model output: expected 6 channels (4 box values + 2 class scores) but the model returned shape [' + shape.join(', ') + ']. Use a YOLOv8 model with exactly 2 classes (solid, liquid) exported to ONNX (best.onnx).');
+  const e = new Error('Wrong model output: expected ' + (4 + CLS.length) + ' channels (4 box values + ' + CLS.length + ' class scores) but the model returned shape [' + shape.join(', ') + ']. Use a YOLOv8 model trained with exactly ' + CLS.length + ' classes (see CLS in the page code) and exported to ONNX (best.onnx).');
   e.known = true; throw e;
 }
 async function validateModel(m){
@@ -388,7 +395,8 @@ function iou(a, b){
 function nms(c, thr){
   c.sort((a,b) => b.conf - a.conf);
   const keep = [];
-  for (const a of c) if (keep.every(k => k.cls !== a.cls || iou(a,k) <= thr)) keep.push(a);
+  const grp = x => (x.cls < 0 ? -1 : CLS[x.cls].group);
+  for (const a of c) if (keep.every(k => grp(k) !== grp(a) || iou(a,k) <= thr)) keep.push(a);
   return keep;
 }
 
@@ -403,16 +411,16 @@ async function infer(src, fw, fh, confThr){
   const lay = layoutOf(o0.dims.map(Number));
   const data = o0.data;
   const n = lay.n, cf = lay.cf;
-  const g = (i,k) => cf ? data[k*n + i] : data[i*6 + k];
+  const ch = lay.ch, nc = CLS.length;
+  const g = (i,k) => cf ? data[k*n + i] : data[i*ch + k];
   let mx = 0;
   for (let i = 0; i < n; i++) mx = Math.max(mx, g(i,0), g(i,1), g(i,2), g(i,3));
   const sc = mx <= 2 ? SIZE : 1;            // normalised (0-1) or pixel (0-640) boxes
   let cand = [];
   for (let i = 0; i < n; i++){
-    const s0 = g(i,4), s1 = g(i,5);
-    const conf = Math.max(s0, s1);
+    let cls = 0, conf = g(i,4);
+    for (let c = 1; c < nc; c++){ const v = g(i,4 + c); if (v > conf){ conf = v; cls = c; } }
     if (!(conf >= confThr)) continue;
-    const cls = s1 > s0 ? 1 : 0;
     const cx = g(i,0)*sc, cy = g(i,1)*sc, w = g(i,2)*sc, h = g(i,3)*sc;
     let x1 = (cx - w/2 - dx) / r, y1 = (cy - h/2 - dy) / r;
     let x2 = (cx + w/2 - dx) / r, y2 = (cy + h/2 - dy) / r;
@@ -626,7 +634,7 @@ async function scan(){
     items.sort((a,b) => (a.cls - b.cls) || ((b.conf||0) - (a.conf||0)));
     items.forEach(d => {
       const def = d.cls < 0 ? UNK : CLS[d.cls];
-      const idx = d.cls < 0 ? 2 : d.cls;
+      const idx = d.cls < 0 ? 2 : def.group;
       d.def = def; d.n = ++counts[idx];
       d.label = def.tag + d.n + ' ' + def.key + (d.conf != null ? ' ' + Math.round(d.conf * 100) + '%' : '');
       const bw = (d.x2 - d.x1) * cmpp, bh = (d.y2 - d.y1) * cmpp;
