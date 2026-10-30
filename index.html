@@ -96,7 +96,7 @@ ul.hist li:last-child{border-bottom:0}
   <header class="card">
     <div class="top">
       <div>
-        <h1>Cleansers AI</h1>
+        <h1 id="title">Cleansers AI</h1>
         <div class="badges">
           <span id="modelBadge" class="badge">Model: not loaded</span>
         </div>
@@ -104,6 +104,18 @@ ul.hist li:last-child{border-bottom:0}
       <button id="themeBtn" type="button" aria-label="Switch theme">🌙</button>
     </div>
   </header>
+
+  <section class="card" id="robotCard" hidden>
+    <h2>Robot control (Bluetooth)</h2>
+    <div id="robotMsg" class="msg">Not connected. Tap Connect and choose “Cleansers-ESP32”.</div>
+    <div class="grid2" style="margin-top:10px">
+      <button id="btConnect" class="full" type="button">Connect to ESP32</button>
+      <button id="motor1Btn" class="primary" type="button" disabled>Motor 1</button>
+      <button id="motor2Btn" class="primary" type="button" disabled>Motor 2 + servo</button>
+      <button id="motorOffBtn" class="danger full" type="button" disabled>Stop all</button>
+    </div>
+    <p class="hint">Motor 1 spins alone. Motor 2 spins while the servo sweeps 0°–180° and back. Pressing one switches the other off.</p>
+  </section>
 
   <div id="alert" role="alert">CLEANING NEEDED<small id="alertSub"></small></div>
 
@@ -742,6 +754,63 @@ setInterval(() => {
   cd.textContent = 'Next scan in ' + left + ' s';
   if (left === 0) scan();
 }, 500);
+
+/* ---------- hidden robot control (Web Bluetooth) ---------- */
+const BLE_SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e';
+const BLE_RX  = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
+let bleDev = null, bleChar = null, robotState = '0';
+function setRobot(msg, kind){ const el = $('robotMsg'); el.textContent = msg; el.className = 'msg ' + (kind || ''); }
+function robotButtons(){
+  const on = !!bleChar;
+  ['motor1Btn','motor2Btn','motorOffBtn'].forEach(id => $(id).disabled = !on);
+  $('motor1Btn').style.outline = robotState === '1' ? '3px solid var(--acc)' : '';
+  $('motor2Btn').style.outline = robotState === '2' ? '3px solid var(--acc)' : '';
+  $('btConnect').textContent = on ? 'Disconnect' : 'Connect to ESP32';
+}
+function bleLost(){
+  bleChar = null; bleDev = null; robotState = '0'; robotButtons();
+  setRobot('Bluetooth disconnected. The ESP32 stops the motors when the link drops. Tap Connect to reconnect.', 'err');
+}
+async function bleConnect(){
+  if (bleChar && bleDev){ try { await robotSend('0'); } catch(e){} try { bleDev.gatt.disconnect(); } catch(e){} return; }
+  if (!navigator.bluetooth) return setRobot('This browser has no Web Bluetooth. Use Chrome on an Android phone (iPhone Safari does not support it), over https://.', 'err');
+  if (!window.isSecureContext) return setRobot('Bluetooth needs a secure https:// page.', 'err');
+  try {
+    setRobot('Choose “Cleansers-ESP32” in the list …');
+    const dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'Cleansers' }], optionalServices: [BLE_SVC] });
+    dev.addEventListener('gattserverdisconnected', bleLost);
+    setRobot('Connecting …');
+    const srv = await dev.gatt.connect();
+    const svc = await srv.getPrimaryService(BLE_SVC);
+    bleChar = await svc.getCharacteristic(BLE_RX); bleDev = dev; robotState = '0';
+    robotButtons(); setRobot('Connected. Motors are off.', 'ok');
+  } catch(e){
+    bleChar = null; bleDev = null; robotButtons();
+    if (e && e.name === 'NotFoundError') setRobot('No device chosen, or the ESP32 was not found. Power the ESP32, keep it close, and try again.', 'err');
+    else setRobot('Could not connect: ' + (e && e.message ? e.message : e), 'err');
+  }
+}
+async function robotSend(cmd){
+  if (!bleChar) throw new Error('Not connected');
+  await bleChar.writeValue(new TextEncoder().encode(cmd));
+  robotState = cmd; robotButtons();
+}
+async function robotCmd(cmd, okText){
+  try { await robotSend(cmd); setRobot(okText, 'ok'); }
+  catch(e){ setRobot('Command failed: ' + (e && e.message ? e.message : e), 'err'); }
+}
+$('btConnect').addEventListener('click', bleConnect);
+$('motor1Btn').addEventListener('click', () => robotCmd('1', 'Motor 1 is running. Motor 2 and the servo are off.'));
+$('motor2Btn').addEventListener('click', () => robotCmd('2', 'Motor 2 is running and the servo is sweeping. Motor 1 is off.'));
+$('motorOffBtn').addEventListener('click', () => robotCmd('0', 'All motors are off.'));
+/* reveal: tap the title 5 times within 3 seconds */
+(function(){
+  let taps = [];
+  $('title').addEventListener('click', () => {
+    const now = Date.now(); taps = taps.filter(t => now - t < 3000); taps.push(now);
+    if (taps.length >= 5){ taps = []; const c = $('robotCard'); c.hidden = !c.hidden; if (!c.hidden) c.scrollIntoView({ block: 'center' }); }
+  });
+})();
 
 /* ---------- start ---------- */
 if (!window.isSecureContext) setStatus(MSG_NO_HTTPS, 'warn');
