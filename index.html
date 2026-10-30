@@ -91,14 +91,16 @@ ul.hist li:last-child{border-bottom:0}
 #espBtn{width:auto;min-height:32px;padding:3px 12px;font-size:.8rem;border-radius:999px}
 #cleanBanner{text-align:center;font-weight:700;font-size:1.05rem;padding:14px 12px;border-radius:12px;margin:0}
 #cleanBanner[hidden]{display:none}
-#rbt{position:fixed;right:10px;bottom:10px;width:48px;height:48px;min-height:0;padding:0;border:0;border-radius:50%;
-  background:transparent;z-index:9999;cursor:pointer;display:flex;align-items:center;justify-content:center;
-  -webkit-tap-highlight-color:transparent}
-#rbt i{display:block;width:14px;height:14px;border-radius:50%;background:var(--muted);opacity:.7;
-  box-shadow:0 0 0 2px var(--card);transition:background .2s}
-#rbt.s1 i{background:#1778f2;opacity:1}
-#rbt.s2 i{background:#ea7a0c;opacity:1}
-#rbt.s0 i{background:var(--acc);opacity:1}
+#rbt{position:fixed;right:10px;bottom:10px;width:56px;height:56px;min-height:0;padding:0;border:0;border-radius:50%;
+  background:transparent;opacity:0;z-index:9999;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent}
+#rbt i{display:none}
+/* left transparent button + message */
+#helpBtn{position:fixed;left:10px;bottom:10px;width:56px;height:56px;min-height:0;padding:0;border:0;border-radius:50%;
+  background:transparent;opacity:0;z-index:9999;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent}
+#toast{position:fixed;left:12px;right:12px;bottom:76px;max-width:420px;margin:0 auto;z-index:9998;padding:14px 16px;
+  border-radius:12px;background:var(--acc);color:var(--onacc);font-weight:700;text-align:center;
+  box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transform:translateY(10px);pointer-events:none;transition:opacity .3s,transform .3s}
+#toast.show{opacity:1;transform:none}
 </style>
 </head>
 <body>
@@ -144,6 +146,16 @@ ul.hist li:last-child{border-bottom:0}
   </section>
 
   <section class="card">
+    <h2>Cleaning robot</h2>
+    <div class="grid2">
+      <button id="dirtBtn" class="primary full" type="button">Dirt found</button>
+      <button id="placedBtn" type="button" disabled>Robot placed</button>
+      <button id="stopCleanBtn" type="button" class="danger" disabled>Stop</button>
+    </div>
+    <p id="robotInfo" class="hint"></p>
+  </section>
+
+  <section class="card">
     <h2>Results</h2>
     <div class="counters">
       <div class="counter s"><b id="cSolid">0</b><span>Solid</span></div>
@@ -158,6 +170,8 @@ ul.hist li:last-child{border-bottom:0}
       <input id="setInterval" type="number" inputmode="decimal" min="0.5" step="0.5" value="1"></label>
     <label class="f">Confidence threshold (0.05 – 0.95)
       <input id="setConf" type="number" inputmode="decimal" min="0.05" max="0.95" step="0.05" value="0.15"></label>
+    <label class="f">Cleaning time after “Robot placed” (seconds, 5 – 300)
+      <input id="setClean" type="number" inputmode="numeric" min="5" max="300" step="1" value="30"></label>
     <label class="f">Phone height above the surface (cm)
       <input id="setHeight" type="number" inputmode="decimal" min="10" step="1" value="100"></label>
     <label class="f" style="margin-bottom:0">Camera field of view across the long side (degrees)
@@ -166,9 +180,9 @@ ul.hist li:last-child{border-bottom:0}
 
   <section class="card">
     <h2>AI model</h2>
-    <div id="modelMsg" class="msg">Loading model from best.onnx …</div>
+    <div id="modelMsg" class="msg">The model is not loaded. Tap “Load model” to load best.onnx.</div>
     <div class="grid2" style="margin-top:10px">
-      <button id="retryBtn" class="full" type="button">Retry automatic load</button>
+      <button id="retryBtn" class="full primary" type="button">Load model</button>
     </div>
     <details id="manual">
       <summary>Load model file manually</summary>
@@ -204,6 +218,8 @@ ul.hist li:last-child{border-bottom:0}
 </div>
 
 <button id="rbt" type="button" aria-label="Cleaning control"><i></i></button>
+<button id="helpBtn" type="button" aria-label="Robot guidance"></button>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
 <script>
@@ -261,7 +277,8 @@ const FIELDS = [
   ['setInterval','interval',1,0.5,3600],
   ['setConf','conf',0.15,0.05,0.95],
   ['setHeight','height',100,10,1000],
-  ['setFov','fov',66,20,140]
+  ['setFov','fov',66,20,140],
+  ['setClean','clean',30,5,300]
 ];
 function getSettings(){
   const out = {}; const fixed = [];
@@ -371,7 +388,10 @@ async function loadManual(files){
     setModelMsg('Could not load the selected file: ' + e.message + '. Make sure you picked best.onnx from the same export.', 'err');
   }
 }
-$('retryBtn').addEventListener('click', loadAuto);
+$('retryBtn').addEventListener('click', async () => {
+  const b = $('retryBtn'); b.disabled = true;
+  try { await loadAuto(); } finally { b.disabled = false; }
+});
 $('modelFiles').addEventListener('change', e => { if (e.target.files.length) loadManual(e.target.files); });
 
 /* ---------- inference ---------- */
@@ -767,7 +787,7 @@ setInterval(() => {
 /* ---------- ESP32 over Bluetooth + floating dot ---------- */
 (function(){
   const SVC = '6e400001-b5a3-f393-e0a9-e50e24dcca9e', RX = '6e400002-b5a3-f393-e0a9-e50e24dcca9e';
-  let dev = null, ch = null, step = 0, busy = false;       // step: 0 off, 1 motor 1, 2 motor 2 + servo
+  let dev = null, ch = null, step = 0, busy = false, pending = null, cleaning = false, cleanTimer = null;       // step: 0 off, 1 motor 1, 2 motor 2 + servo
   const banner = $('cleanBanner'), dot = $('rbt');
   function say(text, kind){ banner.hidden = false; banner.textContent = text; banner.className = 'status ' + (kind || ''); }
   function espUi(){
@@ -778,7 +798,7 @@ setInterval(() => {
     dot.className = on ? 's' + step : '';
   }
   async function send(c){ await ch.writeValue(new TextEncoder().encode(c)); }
-  function lost(){ ch = null; dev = null; step = 0; espUi(); say('ESP32 disconnected. The motors have stopped. Tap Connect ESP32 to reconnect.', 'err'); }
+  function lost(){ clearTimeout(cleanTimer); cleaning = false; pending = null; setRobotUi(); ch = null; dev = null; step = 0; espUi(); say('ESP32 disconnected. The motors have stopped. Tap Connect ESP32 to reconnect.', 'err'); }
   async function connect(){
     if (!navigator.bluetooth) return say('This browser cannot use Bluetooth. Open the site in Chrome on an Android phone.', 'err');
     if (!window.isSecureContext) return say('Bluetooth needs a secure https:// page.', 'err');
@@ -814,13 +834,70 @@ setInterval(() => {
       say('Command failed: ' + (e && e.message ? e.message : e), 'err');
     } finally { busy = false; }
   });
+  /* ----- Dirt found -> Robot placed -> cleaning ----- */
+  function setRobotUi(){
+    $('dirtBtn').disabled = cleaning;
+    $('placedBtn').disabled = cleaning || !pending;
+    $('stopCleanBtn').disabled = !cleaning;
+    $('robotInfo').textContent = cleaning ? 'Cleaning is running. Tap Stop to end it early.'
+      : pending ? 'Dirt type: ' + pending + '. Move the robot to the dirt, then tap Robot placed.'
+      : 'Run a scan first. “Dirt found” uses what the latest scan detected.';
+  }
+  function dirtType(){
+    const r = S.last;
+    if (!r || r.solid + r.liquid === 0) return null;
+    return r.liquid > r.solid ? 'liquid' : 'solid';      // more liquid items: liquid; otherwise solid
+  }
+  async function endClean(msg, kind){
+    clearTimeout(cleanTimer); cleaning = false; setRobotUi();
+    if (ch){ try { await send('0'); } catch(e){ say('The stop command failed: ' + (e && e.message ? e.message : e), 'err'); return; } }
+    step = 0; espUi(); say(msg, kind);
+  }
+  $('dirtBtn').addEventListener('click', () => {
+    if (cleaning) return say('Cleaning is running. Tap Stop first.', 'warn');
+    const t = dirtType();
+    if (!t) return say('No solid or liquid dirt in the latest scan. Run a scan first (Scan now or Start monitoring).', 'warn');
+    pending = t; setRobotUi();
+    say('Dirt found (' + t + '). Move the robot near to the dirt, then tap “Robot placed”.', 'warn');
+  });
+  $('placedBtn').addEventListener('click', async () => {
+    if (!pending || busy) return;
+    if (!ch) return say('ESP32 is not connected. Tap Connect ESP32 at the top first.', 'err');
+    busy = true;
+    try {
+      const t = pending, code = t === 'liquid' ? '1' : '2';
+      await send(code); step = Number(code); espUi();
+      cleaning = true; pending = null; setRobotUi();
+      say('Robot placed. Cleaning the ' + t + ' dirt with the ' + (t === 'liquid' ? 'mop' : 'sponge wiper') + ' …', 'warn');
+      cleanTimer = setTimeout(() => endClean('Cleaning finished. Run a scan to check that the dirt is gone.', 'ok'), getSettings().clean * 1000);
+    } catch(e){
+      say('Command failed: ' + (e && e.message ? e.message : e), 'err');
+    } finally { busy = false; }
+  });
+  $('stopCleanBtn').addEventListener('click', () => endClean('Cleaning stopped.', 'ok'));
+  setRobotUi();
   espUi();
+})();
+
+/* ---------- invisible left button: guidance messages ---------- */
+(function(){
+  const MSGS = [
+    { text: 'Move near the dirt.', ms: 6000 },
+    { text: 'Move even more near to the dirt.', ms: 5000 }
+  ];
+  const toast = $('toast'); let n = 0, timer = null;
+  $('helpBtn').addEventListener('click', () => {
+    const m = MSGS[n % MSGS.length]; n++;
+    clearTimeout(timer);
+    toast.textContent = m.text;
+    toast.classList.add('show');
+    timer = setTimeout(() => toast.classList.remove('show'), m.ms);
+  });
 })();
 
 /* ---------- start ---------- */
 if (!window.isSecureContext) setStatus(MSG_NO_HTTPS, 'warn');
 updateButtons();
-loadAuto();
 })();
 </script>
 </body>
