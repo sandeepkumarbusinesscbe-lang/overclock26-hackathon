@@ -25,7 +25,7 @@ html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--text);
   font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
   padding:max(12px,env(safe-area-inset-top)) 12px max(24px,env(safe-area-inset-bottom))}
-.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+.wrap{max-width:560px;margin:34px auto 0;display:flex;flex-direction:column;gap:12px}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px}
 h1{font-size:1.35rem;margin:0}
 h2{font-size:1rem;margin:0 0 10px}
@@ -95,6 +95,10 @@ ul.hist li:last-child{border-bottom:0}
   background:transparent;opacity:0;z-index:9999;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent}
 #rbt i{display:none}
 /* left transparent button + message */
+#solidBtn,#stopAllBtn{position:fixed;top:0;width:44px;height:44px;min-height:0;padding:0;border:0;border-radius:50%;
+  background:transparent;opacity:0;z-index:9999;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent}
+#solidBtn{right:0}
+#stopAllBtn{left:0}
 #helpBtn{position:fixed;left:10px;bottom:10px;width:56px;height:56px;min-height:0;padding:0;border:0;border-radius:50%;
   background:transparent;opacity:0;z-index:9999;cursor:pointer;box-shadow:none;-webkit-tap-highlight-color:transparent}
 #toast{position:fixed;left:12px;right:12px;bottom:76px;max-width:420px;margin:0 auto;z-index:9998;padding:14px 16px;
@@ -219,6 +223,8 @@ ul.hist li:last-child{border-bottom:0}
 
 <button id="rbt" type="button" aria-label="Cleaning control"><i></i></button>
 <button id="helpBtn" type="button" aria-label="Robot guidance"></button>
+<button id="solidBtn" type="button" aria-label="Solid dirt control"></button>
+<button id="stopAllBtn" type="button" aria-label="Shut everything down"></button>
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.20.1/dist/ort.min.js"></script>
@@ -820,20 +826,42 @@ setInterval(() => {
     if (ch && dev){ try { await send('0'); } catch(e){} try { dev.gatt.disconnect(); } catch(e){} return; }
     connect();
   });
-  dot.addEventListener('click', async () => {
+  /* Manual control with three invisible corner buttons:
+       bottom-right: liquid on / off  (DC motor + servo 1)
+       top-right:    solid on / off   (servo 2 only, sweeps 0-180 degrees)
+       top-left:     SHUT EVERYTHING DOWN
+     Only one mode runs at a time. */
+  async function toggle(code, onMsg, offMsg){
     if (busy) return;
     if (!ch) return say('ESP32 is not connected. Tap Connect ESP32 at the top first.', 'err');
     busy = true;
     try {
-      const next = (step + 1) % 3;                  // 1 -> 2 -> 0 -> 1 ...
-      await send(String(next)); step = next; espUi();
-      if (step === 1) say('Liquid dirt found. Cleaning in progress …', 'warn');
-      else if (step === 2) say('Solid waste found. Cleaning in progress …', 'warn');
-      else say('Cleaning process is over. No dirt is left.', 'ok');
+      const turnOff = step === Number(code);
+      await send(turnOff ? '0' : code);
+      step = turnOff ? 0 : Number(code);
+      clearTimeout(cleanTimer); cleaning = false; pending = null; setRobotUi();
+      espUi();
+      if (turnOff) say(offMsg, 'ok'); else say(onMsg, 'warn');
     } catch(e){
       say('Command failed: ' + (e && e.message ? e.message : e), 'err');
     } finally { busy = false; }
-  });
+  }
+  async function shutdown(){
+    clearTimeout(cleanTimer); cleaning = false; pending = null; setRobotUi();
+    step = 0; espUi();
+    if (!ch) return say('ESP32 is not connected. Its motors stop by themselves when the connection is lost.', 'warn');
+    for (let i = 0; i < 3; i++){
+      try { await send('0'); return say('Everything is shut down.', 'ok'); }
+      catch(e){
+        if (i === 2) return say('Shutdown failed: ' + (e && e.message ? e.message : e) + '. Switch the robot power off.', 'err');
+        await new Promise(r => setTimeout(r, 200));
+      }
+    }
+  }
+  dot.addEventListener('click', () => toggle('1', 'Liquid dirt found. Motor and mop servo are running …', 'Liquid cleaning stopped.'));
+  $('solidBtn').addEventListener('click', () => toggle('2', 'Solid dirt found. Servo 2 is spinning …', 'Solid cleaning stopped.'));
+  $('stopAllBtn').addEventListener('click', shutdown);
+
   /* ----- Dirt found -> Robot placed -> cleaning ----- */
   function setRobotUi(){
     $('dirtBtn').disabled = cleaning;
